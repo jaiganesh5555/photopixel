@@ -1,9 +1,7 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
 import "./globals.css";
-import {
-  ClerkProvider
-} from '@clerk/nextjs'
+import { ClerkProvider } from "@clerk/nextjs";
 import { Appbar } from "@/components/Appbar";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "react-hot-toast";
@@ -27,8 +25,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <ClerkProvider> 
+    <html lang="en" suppressHydrationWarning>
+      <ClerkProvider>
         <body className={`${geistSans.variable} ${geistMono.variable}`}>
           <ThemeProvider
             attribute="class"
