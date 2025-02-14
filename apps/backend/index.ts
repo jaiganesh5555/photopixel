@@ -6,13 +6,24 @@ import { S3Client } from "bun";
 import { FalAIModel } from "./models/FalAIModel";
 import cors from "cors";
 import { authMiddleware } from "./middleware";
+import dotenv from "dotenv";
+
+import paymentRoutes from "./routes/payment.routes";
+
+
+dotenv.config();
 
 const PORT = process.env.PORT || 8080;
 
 const falAiModel = new FalAIModel();
 
 const app = express();
-app.use(cors());
+app.use(cors({
+  origin: process.env.FRONTEND_URL || "http://localhost:3000",
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+}));
 app.use(express.json());
 
 app.get("/pre-signed-url", async (req, res) => {
@@ -128,9 +139,10 @@ app.post("/pack/generate", authMiddleware, async (req, res) => {
     })
 
     if (!model) {
-      return res.status(411).json({
+       res.status(411).json({
         "message": "Model not found"
       })
+      return;
     }
 
     let requestIds: { request_id: string }[] = await Promise.all(prompts.map((prompt) => falAiModel.generateImage(prompt.prompt, model.tensorPath!)));
@@ -255,7 +267,12 @@ app.post("/fal-ai/webhook/image", async (req, res) => {
   res.json({
     message: "Webhook received"
   })
+
+  
 })
+
+app.use("/payment", paymentRoutes)
+
 
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);

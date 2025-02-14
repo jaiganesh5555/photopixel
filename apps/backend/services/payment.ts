@@ -1,0 +1,306 @@
+import Stripe from "stripe";
+import Razorpay from "razorpay";
+import { prismaClient } from "db";
+import crypto from "crypto";
+import { PlanType } from "@prisma/client";
+
+// Validate environment variables
+const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY;
+const RAZORPAY_KEY_ID = process.env.RAZORPAY_KEY_ID;
+const RAZORPAY_KEY_SECRET = process.env.RAZORPAY_KEY_SECRET;
+
+if (!STRIPE_SECRET_KEY) {
+  console.error("Missing STRIPE_SECRET_KEY");
+}
+
+if (!RAZORPAY_KEY_ID || !RAZORPAY_KEY_SECRET) {
+  console.error("Missing Razorpay credentials");
+}
+
+// Initialize payment providers
+const stripe = STRIPE_SECRET_KEY
+  ? new Stripe(STRIPE_SECRET_KEY, {
+      apiVersion: "2025-01-27.acacia",
+    })
+  : null;
+
+const razorpay =
+  RAZORPAY_KEY_ID && RAZORPAY_KEY_SECRET
+    ? new Razorpay({
+        key_id: RAZORPAY_KEY_ID,
+        key_secret: RAZORPAY_KEY_SECRET,
+      })
+    : null;
+
+// Define plan prices
+export const PLAN_PRICES = {
+  basic: {
+    monthly: 999, // $9.99
+    annual: 9990, // $99.90
+  },
+  premium: {
+    monthly: 1999, // $19.99
+    annual: 19990, // $199.90
+  },
+} as const;
+
+// Define credit amounts per plan
+export const CREDITS_PER_PLAN = {
+  basic: 500,
+  premium: 1000,
+} as const;
+
+const ANNUAL_DISCOUNT = 0.8; // 20% discount
+
+// Replace this with your new product ID from step 1
+const PRODUCT_ID = "prod_RlwsuOUnYssRVJ"; // Your new product ID here
+
+// First, create a Product if you haven't already
+async function getOrCreateProduct(planName: string) {
+  try {
+    if (!stripe) {
+      throw new Error("Stripe is not configured");
+    }
+    const products = await stripe.products.search({
+      query: `name:'${planName}' AND active:'true'`,
+      limit: 1,
+    });
+
+    if (products.data.length > 0) {
+      // If product exists but is not active, reactivate it
+      if (!products.data[0].active) {
+        return await stripe.products.update(products.data[0].id, {
+          active: true,
+        });
+      }
+      return products.data[0];
+    }
+
+    // Create new product
+    return await stripe.products.create({
+      name: planName,
+      description: `${planName} subscription plan`,
+      active: true, // Explicitly set active
+    });
+  } catch (error) {
+    console.error("Error in getOrCreateProduct:", error);
+    throw error;
+  }
+}
+
+// Then, create or get a Price for the product
+async function getOrCreatePrice(
+  productId: string,
+  amount: number,
+  interval: "month" | "year"
+) {
+  try {
+    if (!stripe) {
+      throw new Error("Stripe is not configured");
+    }
+    const prices = await stripe.prices.list({
+      product: productId,
+      active: true,
+      type: "recurring",
+      recurring: { interval },
+    });
+
+    if (prices.data.length > 0) {
+      // If price exists but is not active, reactivate it
+      if (!prices.data[0].active) {
+        return await stripe.prices.update(prices.data[0].id, {
+          active: true,
+        });
+      }
+      return prices.data[0];
+    }
+
+    // Create new price
+    return await stripe.prices.create({
+      product: productId,
+      currency: "usd",
+      recurring: { interval },
+      unit_amount: amount,
+      active: true, // Explicitly set active
+    });
+  } catch (error) {
+    console.error("Error in getOrCreatePrice:", error);
+    throw error;
+  }
+}
+
+export async function createStripeSession(
+  userId: string,
+  plan: "basic" | "premium",
+  isAnnual: boolean,
+  email: string
+) {
+  try {
+    if (!stripe) {
+      throw new Error("Stripe is not configured");
+    }
+
+    console.log("Creating Stripe session:", { userId, plan, isAnnual, email });
+
+    // Validate plan type
+    if (!PLAN_PRICES[plan]) {
+      throw new Error("Invalid plan type");
+    }
+
+    // Get the correct price
+    const price = PLAN_PRICES[plan][isAnnual ? "annual" : "monthly"];
+    console.log("Selected price:", price);
+
+    // Create the checkout session
+    const session = await stripe.checkout.sessions.create({
+      payment_method_types: ["card"],
+      line_items: [
+        {
+          price_data: {
+            currency: "usd",
+            product_data: {
+              name: `${plan.charAt(0).toUpperCase() + plan.slice(1)} Plan`,
+              description: `${isAnnual ? "Annual" : "Monthly"} subscription`,
+            },
+            unit_amount: price,
+          },
+          quantity: 1,
+        },
+      ],
+      mode: "payment",
+      success_url: `${process.env.FRONTEND_URL}/payment/success?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${process.env.FRONTEND_URL}/payment/cancel`,
+      customer_email: email,
+      metadata: {
+        userId,
+        plan,
+        isAnnual: String(isAnnual),
+      },
+    });
+
+    console.log("Stripe session created:", session);
+    return session;
+  } catch (error) {
+    console.error("Stripe session creation error:", error);
+    throw error;
+  }
+}
+
+export async function getStripeSession(sessionId: string) {
+  if (!stripe) {
+    throw new Error("Stripe is not configured");
+  }
+  return await stripe.checkout.sessions.retrieve(sessionId);
+}
+
+export async function createRazorpayOrder(
+  userId: string,
+  plan: keyof typeof PLAN_PRICES,
+  isAnnual: boolean
+) {
+  if (!razorpay) {
+    throw new Error("Razorpay is not configured");
+  }
+
+  try {
+    console.log("Creating Razorpay order:", { userId, plan, isAnnual });
+
+    const amount = isAnnual
+      ? PLAN_PRICES[plan].annual
+      : PLAN_PRICES[plan].monthly;
+
+    const orderOptions = {
+      amount,
+      currency: "INR",
+      receipt: `rcpt_${Date.now()}`,
+      notes: {
+        userId,
+        plan,
+        isAnnual: String(isAnnual),
+      },
+    };
+
+    console.log("Razorpay order options:", orderOptions);
+
+    const order = await razorpay.orders.create(orderOptions);
+    console.log("Razorpay order created:", order);
+
+    return {
+      id: order.id,
+      amount: order.amount,
+      currency: order.currency,
+      receipt: order.receipt,
+    };
+  } catch (error) {
+    console.error("Razorpay order creation error:", error);
+    throw error;
+  }
+}
+
+export async function verifyStripePayment(sessionId: string) {
+  if (!stripe) {
+    throw new Error("Stripe is not configured");
+  }
+  const session = await stripe.checkout.sessions.retrieve(sessionId);
+  return session.payment_status === "paid";
+}
+
+export const verifyRazorpaySignature = (
+  orderId: string,
+  paymentId: string,
+  signature: string
+) => {
+  if (!razorpay) {
+    throw new Error("Razorpay is not configured");
+  }
+
+  const body = orderId + "|" + paymentId;
+  const expectedSignature = crypto
+    .createHmac("sha256", RAZORPAY_KEY_SECRET!)
+    .update(body.toString())
+    .digest("hex");
+
+  return expectedSignature === signature;
+};
+
+export async function addCreditsForPlan(userId: string, plan: PlanType) {
+  const credits = CREDITS_PER_PLAN[plan];
+
+  return await prismaClient.userCredit.upsert({
+    where: { userId },
+    update: { amount: { increment: credits } },
+    create: {
+      userId,
+      amount: credits,
+    },
+  });
+}
+
+export async function createSubscriptionRecord(
+  userId: string,
+  plan: PlanType,
+  paymentId: string,
+  orderId: string
+) {
+  return await prismaClient.$transaction(async (prisma) => {
+    const subscription = await prisma.subscription.create({
+      data: {
+        userId,
+        plan,
+        paymentId,
+        orderId,
+      },
+    });
+    await addCreditsForPlan(userId, plan);
+    return subscription;
+  });
+}
+
+export const PaymentService = {
+  createStripeSession,
+  createRazorpayOrder,
+  verifyRazorpaySignature,
+  getStripeSession,
+  createSubscriptionRecord,
+  addCreditsForPlan,
+};
