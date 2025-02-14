@@ -13,6 +13,7 @@
     "typescript": "^5.0.0"
   },
   "dependencies": {
+    "@clerk/clerk-sdk-node": "^5.1.6",
     "@clerk/nextjs": "^6.11.2",
     "@fal-ai/client": "^1.2.3",
     "@neondatabase/serverless": "^0.10.4",
@@ -22,6 +23,8 @@
     "cors": "^2.8.5",
     "db": "*",
     "express": "^4.21.2",
-    "jsonwebtoken": "^9.0.2"
+    "jsonwebtoken": "^9.0.2",
+    "razorpay": "^2.9.5",
+    "stripe": "^17.6.0"
   }
 }

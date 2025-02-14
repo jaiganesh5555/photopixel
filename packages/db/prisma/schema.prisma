@@ -85,6 +85,21 @@ model PackPrompts {
   pack      Packs    @relation(fields: [packId], references: [id])
 }
 
+model Subscription {
+  id        String   @id @default(cuid())
+  userId    String
+  plan      PlanType
+  paymentId String
+  orderId   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+enum PlanType {
+  basic
+  premium
+}
+
 enum ModelTypeEnum {
   Man
   Woman
@@ -108,4 +123,14 @@ enum EyeColorEnum {
   Blue
   Hazel
   Gray
+}
+
+model UserCredit {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  amount    Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
 }
