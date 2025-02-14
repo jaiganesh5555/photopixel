@@ -1,4 +1,9 @@
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { PlanType } from "@/types";
 import { cn } from "@/lib/utils";
@@ -19,7 +24,7 @@ export function PaymentModal({
   loading,
 }: PaymentModalProps) {
   const planName = plan.charAt(0).toUpperCase() + plan.slice(1);
-  
+
   const handlePaymentClick = async (method: "stripe" | "razorpay") => {
     try {
       await onPaymentSubmit(method);
@@ -33,18 +38,16 @@ export function PaymentModal({
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>
-            Complete Your {planName} Plan {isAnnual ? "Annual" : "Monthly"} Subscription
+            Complete Your {planName} Plan {isAnnual ? "Annual" : "Monthly"}{" "}
+            Subscription
           </DialogTitle>
         </DialogHeader>
-        
+
         <div className="grid gap-4 py-4">
           <Button
             onClick={() => handlePaymentClick("stripe")}
             disabled={loading}
-            className={cn(
-              "w-full",
-              loading && "cursor-not-allowed opacity-50"
-            )}
+            className={cn("w-full", loading && "cursor-not-allowed opacity-50")}
           >
             <div className="flex items-center justify-center gap-2">
               {loading ? (
@@ -66,15 +69,12 @@ export function PaymentModal({
               )}
             </div>
           </Button>
-          
+
           <Button
             onClick={() => handlePaymentClick("razorpay")}
             disabled={loading}
             variant="outline"
-            className={cn(
-              "w-full",
-              loading && "cursor-not-allowed opacity-50"
-            )}
+            className={cn("w-full", loading && "cursor-not-allowed opacity-50")}
           >
             <div className="flex items-center justify-center gap-2">
               {loading ? (

@@ -18,4 +18,4 @@ export default function PaymentCancelPage() {
       </div>
     </div>
   );
-} 
+}
