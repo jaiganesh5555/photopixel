@@ -1,21 +1,12 @@
-import { useSession } from "next-auth/react";
-import { Session } from "next-auth";
-
-// Extend Session type to include accessToken
-interface CustomSession extends Session {
-  accessToken?: string;
-}
+import { useAuth as useClerkAuth, useUser } from "@clerk/nextjs";
 
 export function useAuth() {
-  const { data: session } = useSession() as { data: CustomSession | null };
-
-  const getToken = async () => {
-    return session?.accessToken;
-  };
+  const { getToken, isSignedIn } = useClerkAuth();
+  const { user } = useUser();
 
   return {
     getToken,
-    isAuthenticated: !!session,
-    user: session?.user,
+    isAuthenticated: !!isSignedIn,
+    user,
   };
 }
