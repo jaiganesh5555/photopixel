@@ -11,4 +11,4 @@ RUN bunx turbo build --filter=backend...
 EXPOSE 8080
 
 # Start the frontend application
-CMD ["npm", "start:backend"]
+CMD ["bun", "start:backend"]
