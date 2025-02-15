@@ -11,14 +11,14 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { creditUpdateEvent } from "@/hooks/usePayment";
+import { BACKEND_URL } from "@/app/config";
 
 export function Credits() {
   const [credits, setCredits] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const { getToken } = useAuth();
   const router = useRouter();
-  const baseurl =
-    process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8080";
+  const baseurl = BACKEND_URL;
 
   const fetchCredits = async () => {
     try {

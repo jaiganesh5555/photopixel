@@ -5,6 +5,7 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { useAuth } from "@clerk/nextjs";
 import { creditUpdateEvent } from "@/hooks/usePayment";
 import { useToast } from "@/hooks/use-toast";
+import { BACKEND_URL } from "@/app/config";
 
 export function PaymentSuccessContent() {
   const [verifying, setVerifying] = useState(true);
@@ -13,8 +14,7 @@ export function PaymentSuccessContent() {
   const { getToken } = useAuth();
   const { toast } = useToast();
   const sessionId = searchParams.get("session_id");
-  const baseurl =
-    process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8080";
+  const baseurl = BACKEND_URL;
 
   useEffect(() => {
     async function verifyPayment() {
