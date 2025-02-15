@@ -7,7 +7,7 @@ COPY . .
 RUN bun install
 
 RUN bunx turbo build --filter=backend...
-RUN bunx prisma generate
+RUN bun run generate:db
 
 EXPOSE 8080
 
