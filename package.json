@@ -5,7 +5,9 @@
     "build": "turbo build",
     "dev": "turbo dev",
     "lint": "turbo lint",
-    "format": "prettier --write \"**/*.{ts,tsx,md}\""
+    "format": "prettier --write \"**/*.{ts,tsx,md}\"",
+    "start:web": "cd ./apps/web && npm run start",
+    "start:backend": "cd ./apps/backend && npm run start"    
   },
   "devDependencies": {
     "prettier": "^3.5.0",

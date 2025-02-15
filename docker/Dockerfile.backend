@@ -1,0 +1,14 @@
+FROM oven/bun:1
+
+WORKDIR /app
+
+COPY . .
+
+RUN bun install
+
+RUN bunx turbo build --filter=backend...
+
+EXPOSE 8080
+
+# Start the frontend application
+CMD ["npm", "start:backend"]
