@@ -8,7 +8,7 @@ COPY . .
 
 RUN bun install
 
-RUN NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=CLERK_PUBLISHABLE_KEY bunx turbo build --filter=web...
+RUN NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_live_Y2xlcmsuMTAweGRldnMuY29tJA bunx turbo build --filter=web...
 
 ENV NODE_ENV production
 
