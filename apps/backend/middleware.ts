@@ -45,7 +45,7 @@ export async function authMiddleware(
     const decoded = jwt.verify(token, formattedKey, {
       algorithms: ["RS256"],
       issuer:
-        process.env.CLERK_ISSUER || "https://steady-kit-19.clerk.accounts.dev",
+        process.env.CLERK_ISSUER || "https://clerk.100xdevs.com",
       complete: true,
     });
 
