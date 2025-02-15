@@ -54,7 +54,7 @@ export function Appbar() {
                 className="dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-800 transition"
                 asChild
               >
-                <Link href="/dashboard">Dashboard{process.env.NEXT_PUBLIC_BACKEND_URL}hi</Link>
+                <Link href="/dashboard">Dashboard</Link>
               </Button>
               <Credits />
               <UserButton
