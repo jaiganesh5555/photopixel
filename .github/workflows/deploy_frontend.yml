@@ -26,6 +26,8 @@ jobs:
           file: ./docker/Dockerfile.frontend
           push: true
           tags: 100xdevs/photo-ai-frontend:${{ github.sha }}
+          build-args: |
+            CLERK_PUBLISHABLE_KEY=${{ secrets.CLERK_PUBLISHABLE_KEY }} 
       
       - name: Clone staging-ops repo, update, and push
         env:
