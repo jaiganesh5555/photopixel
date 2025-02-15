@@ -1,12 +1,14 @@
 FROM oven/bun:1
 
+ARG CLERK_PUBLISHABLE_KEY
+
 WORKDIR /app
 
 COPY . .
 
 RUN bun install
 
-RUN bunx turbo build --filter=web...
+RUN CLERK_PUBLISHABLE_KEY=CLERK_PUBLISHABLE_KEY bunx turbo build --filter=web...
 
 ENV NODE_ENV production
 
