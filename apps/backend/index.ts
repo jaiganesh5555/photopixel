@@ -23,7 +23,9 @@ const falAiModel = new FalAIModel();
 const app = express();
 app.use(
   cors({
-    origin: process.env.FRONTEND_URL || "https://photo.100xdevs.com",
+    origin:
+      process.env.FRONTEND_URL ||
+      "https://photo.100xdevs.com, http://localhost:3000",
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
