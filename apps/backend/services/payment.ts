@@ -225,19 +225,39 @@ export const verifyRazorpaySignature = ({
   }
 };
 
+// Add retry logic for database operations
+async function withRetry<T>(
+  operation: () => Promise<T>,
+  retries = 3,
+  delay = 1000
+): Promise<T> {
+  try {
+    return await operation();
+  } catch (error) {
+    if (retries > 0 && error instanceof Error && error.message.includes("Can't reach database server")) {
+      console.log(`Retrying operation, ${retries} attempts left`);
+      await new Promise(resolve => setTimeout(resolve, delay));
+      return withRetry(operation, retries - 1, delay * 2);
+    }
+    throw error;
+  }
+}
+
 export async function addCreditsForPlan(userId: string, plan: PlanType) {
   try {
     const credits = CREDITS_PER_PLAN[plan];
     console.log("Adding credits:", { userId, plan, credits });
 
-    return await prismaClient.userCredit.upsert({
-      where: { userId },
-      update: { amount: { increment: credits } },
-      create: {
-        userId,
-        amount: credits,
-      },
-    });
+    return await withRetry(() => 
+      prismaClient.userCredit.upsert({
+        where: { userId },
+        update: { amount: { increment: credits } },
+        create: {
+          userId,
+          amount: credits,
+        },
+      })
+    );
   } catch (error) {
     console.error("Credit addition error:", error);
     throw error;
@@ -252,29 +272,29 @@ export async function createSubscriptionRecord(
   isAnnual: boolean = false
 ) {
   try {
-    return await prismaClient.$transaction(async (prisma) => {
-      console.log("Creating subscription:", {
-        userId,
-        plan,
-        paymentId,
-        orderId,
-        isAnnual,
-      });
-
-      const subscription = await prisma.subscription.create({
-        data: {
+    return await withRetry(() =>
+      prismaClient.$transaction(async (prisma) => {
+        console.log("Creating subscription:", {
           userId,
           plan,
           paymentId,
           orderId,
-        },
-      });
+          isAnnual,
+        });
 
-      console.log("Adding credits for plan:", plan);
-      await addCreditsForPlan(userId, plan);
+        const subscription = await prisma.subscription.create({
+          data: {
+            userId,
+            plan,
+            paymentId,
+            orderId,
+          },
+        });
 
-      return subscription;
-    });
+        await addCreditsForPlan(userId, plan);
+        return subscription;
+      })
+    );
   } catch (error) {
     console.error("Subscription creation error:", error);
     throw error;

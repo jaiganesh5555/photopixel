@@ -202,13 +202,23 @@ router.post(
         orderId: razorpay_order_id,
         signature: razorpay_signature,
         plan,
-        isAnnual
+        isAnnual,
       });
 
-      if (!razorpay_payment_id || !razorpay_order_id || !razorpay_signature || !plan) {
+      if (
+        !razorpay_payment_id ||
+        !razorpay_order_id ||
+        !razorpay_signature ||
+        !plan
+      ) {
         res.status(400).json({
           message: "Missing required fields",
-          received: { razorpay_payment_id, razorpay_order_id, razorpay_signature, plan }
+          received: {
+            razorpay_payment_id,
+            razorpay_order_id,
+            razorpay_signature,
+            plan,
+          },
         });
         return;
       }
@@ -217,7 +227,7 @@ router.post(
         const isValid = await PaymentService.verifyRazorpaySignature({
           paymentId: razorpay_payment_id,
           orderId: razorpay_order_id,
-          signature: razorpay_signature
+          signature: razorpay_signature,
         });
 
         if (!isValid) {
@@ -237,31 +247,34 @@ router.post(
         // Get updated credits
         const userCredit = await prismaClient.userCredit.findUnique({
           where: { userId: req.userId! },
-          select: { amount: true }
+          select: { amount: true },
         });
 
         console.log("Payment successful:", {
           subscription,
-          credits: userCredit?.amount
+          credits: userCredit?.amount,
         });
 
         res.json({
           success: true,
           credits: userCredit?.amount || 0,
-          subscription
+          subscription,
         });
       } catch (verifyError) {
         console.error("Verification process error:", verifyError);
         res.status(500).json({
           message: "Error processing payment verification",
-          details: verifyError instanceof Error ? verifyError.message : "Unknown error"
+          details:
+            verifyError instanceof Error
+              ? verifyError.message
+              : "Unknown error",
         });
       }
     } catch (error) {
       console.error("Route handler error:", error);
       res.status(500).json({
         message: "Error verifying payment",
-        details: error instanceof Error ? error.message : "Unknown error"
+        details: error instanceof Error ? error.message : "Unknown error",
       });
     }
   }

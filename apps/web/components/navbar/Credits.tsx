@@ -47,19 +47,27 @@ export function Credits() {
   useEffect(() => {
     fetchCredits();
 
-    // Listen for credit updates
-    const handleCreditUpdate = () => {
+    // Listen for credit updates from creditUpdateEvent
+    const handleCreditUpdate = (event: Event) => {
       console.log("Credit update event received");
+      if (event instanceof CustomEvent) {
+        // Immediately update credits if available in event
+        if (event.detail) {
+          setCredits(event.detail);
+        }
+      }
+      // Fetch latest credits from server
       fetchCredits();
     };
 
-    window.addEventListener("creditUpdate", handleCreditUpdate);
+    // Use the creditUpdateEvent instead of window
+    creditUpdateEvent.addEventListener("creditUpdate", handleCreditUpdate);
 
     // Refresh credits every minute
     const interval = setInterval(fetchCredits, 60 * 1000);
 
     return () => {
-      window.removeEventListener("creditUpdate", handleCreditUpdate);
+      creditUpdateEvent.removeEventListener("creditUpdate", handleCreditUpdate);
       clearInterval(interval);
     };
   }, []);

@@ -5,11 +5,12 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
 import { BACKEND_URL } from "@/app/config";
 import { useAuth } from "@clerk/nextjs";
-import { Loader2 } from "lucide-react";
-import { creditUpdateEvent } from "@/hooks/usePayment";
+import { Loader2, CheckCircle } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 export function PaymentSuccessContent() {
   const [verifying, setVerifying] = useState(true);
+  const [verified, setVerified] = useState(false);
   const searchParams = useSearchParams();
   const router = useRouter();
   const { toast } = useToast();
@@ -23,8 +24,10 @@ export function PaymentSuccessContent() {
         const orderId = searchParams.get("razorpay_order_id");
         const signature = searchParams.get("razorpay_signature");
 
+        // If no payment parameters, assume direct navigation after successful payment
         if (!sessionId && !paymentId) {
-          router.push("/payment/cancel");
+          setVerified(true);
+          setVerifying(false);
           return;
         }
 
@@ -54,12 +57,7 @@ export function PaymentSuccessContent() {
           const data = await response.json();
 
           if (response.ok && data.success) {
-            // Trigger credit update
-            const event = new Event("creditUpdate");
-            window.dispatchEvent(event);
-            creditUpdateEvent.dispatchEvent(event);
-
-            router.push("/payment/success");
+            setVerified(true);
           } else {
             router.push("/payment/cancel");
           }
@@ -78,17 +76,10 @@ export function PaymentSuccessContent() {
           const data = await response.json();
 
           if (response.ok && data.success) {
-            // Trigger credit update
-            const event = new Event("creditUpdate");
-            window.dispatchEvent(event);
-            creditUpdateEvent.dispatchEvent(event);
-
-            router.push("/payment/success");
+            setVerified(true);
           } else {
             router.push("/payment/cancel");
           }
-        } else {
-          router.push("/payment/cancel");
         }
       } catch (error) {
         console.error("Payment verification error:", error);
@@ -106,6 +97,23 @@ export function PaymentSuccessContent() {
       <div className="flex flex-col items-center justify-center min-h-[400px] space-y-4">
         <Loader2 className="h-8 w-8 animate-spin text-gray-500" />
         <p className="text-lg text-gray-600">Verifying your payment...</p>
+      </div>
+    );
+  }
+
+  if (verified) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[400px] space-y-6">
+        <CheckCircle className="h-16 w-16 text-green-500" />
+        <h1 className="text-2xl font-bold text-white-900">
+          Payment Successful!
+        </h1>
+        <p className="text-lg text-gray-200 text-center max-w-md">
+          Your credits have been added to your account.
+        </p>
+        <Button onClick={() => router.push("/dashboard")} className="mt-4">
+          Go to Dashboard
+        </Button>
       </div>
     );
   }
