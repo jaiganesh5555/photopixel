@@ -24,12 +24,8 @@ export function usePayment() {
   ) => {
     try {
       setLoading(true);
-      console.log("Initiating payment:", { plan, isAnnual, method });
-
       const token = await getToken();
-      if (!token) {
-        throw new Error("Not authenticated");
-      }
+      if (!token) throw new Error("Not authenticated");
 
       const response = await fetch(`${apiUrl}/payment/create`, {
         method: "POST",
@@ -41,11 +37,7 @@ export function usePayment() {
       });
 
       const data = await response.json();
-      console.log("Payment response:", data);
-
-      if (!response.ok) {
-        throw new Error(data.message || "Payment failed");
-      }
+      if (!response.ok) throw new Error(data.message || "Payment failed");
 
       if (method === "stripe" && data.sessionId) {
         const stripe = await stripePromise;
@@ -60,9 +52,12 @@ export function usePayment() {
           throw error;
         }
       } else if (method === "razorpay") {
+        // Load Razorpay SDK dynamically
+        await loadRazorpayScript();
+
         const options = {
           key: data.key,
-          amount: data.amount,
+          amount: String(data.amount), // Convert to string
           currency: data.currency,
           name: data.name,
           description: data.description,
@@ -82,56 +77,39 @@ export function usePayment() {
                     razorpay_order_id: response.razorpay_order_id,
                     razorpay_signature: response.razorpay_signature,
                     plan,
-                    isAnnual,
+                    isAnnual: String(isAnnual),
                   }),
                 }
               );
 
-              if (!verifyResponse.ok) {
-                const errorData = await verifyResponse.json();
-                throw new Error(
-                  errorData.message || "Payment verification failed"
-                );
-              }
+              const verifyData = await verifyResponse.json();
+              if (!verifyResponse.ok) throw new Error(verifyData.message);
 
-              toast({
-                title: "Payment Successful!",
-                description: "Your subscription is now active",
-                variant: "default",
-              });
-
-              // Dispatch credit update event
-              const event = new Event("creditUpdate");
-              window.dispatchEvent(event);
-
+              window.dispatchEvent(new Event("creditUpdate"));
               router.push("/payment/success");
             } catch (error) {
               console.error("Verification error:", error);
-              toast({
-                title: "Payment Failed",
-                description:
-                  error instanceof Error ? error.message : "Please try again",
-                variant: "destructive",
-              });
               router.push("/payment/cancel");
             }
           },
-          prefill: data.prefill || {
+          prefill: {
             name: "",
             email: "",
+            contact: "",
           },
-          notes: data.notes,
-          theme: data.theme || {
+          notes: {
+            ...data.notes,
+          },
+          theme: {
             color: "#000000",
-          },
-          modal: {
-            ondismiss: function () {
-              router.push("/payment/cancel");
-            },
           },
         };
 
         const razorpay = new (window as any).Razorpay(options);
+        razorpay.on("payment.failed", function (response: any) {
+          console.error("Payment failed:", response.error);
+          router.push("/payment/cancel");
+        });
         razorpay.open();
       }
     } catch (error) {
@@ -142,13 +120,27 @@ export function usePayment() {
           error instanceof Error ? error.message : "Please try again",
         variant: "destructive",
       });
+      router.push("/payment/cancel");
     } finally {
       setLoading(false);
     }
   };
 
-  return {
-    handlePayment,
-    loading,
-  };
+  return { handlePayment, loading };
+}
+
+// Helper function to load Razorpay SDK
+function loadRazorpayScript(): Promise<void> {
+  return new Promise((resolve) => {
+    if (document.getElementById("razorpay-sdk")) {
+      resolve();
+      return;
+    }
+    const script = document.createElement("script");
+    script.id = "razorpay-sdk";
+    script.src = "https://checkout.razorpay.com/v1/checkout.js";
+    script.async = true;
+    script.onload = () => resolve();
+    document.body.appendChild(script);
+  });
 }

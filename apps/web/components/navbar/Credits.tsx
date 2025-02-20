@@ -22,6 +22,7 @@ export function Credits() {
 
   const fetchCredits = async () => {
     try {
+      setLoading(true);
       const token = await getToken();
       if (!token) return;
 
@@ -29,6 +30,7 @@ export function Credits() {
         headers: {
           Authorization: `Bearer ${token}`,
         },
+        cache: 'no-store', // Disable caching
       });
 
       if (response.ok) {
@@ -47,16 +49,17 @@ export function Credits() {
 
     // Listen for credit updates
     const handleCreditUpdate = () => {
+      console.log("Credit update event received");
       fetchCredits();
     };
 
-    creditUpdateEvent.addEventListener("creditUpdate", handleCreditUpdate);
+    window.addEventListener("creditUpdate", handleCreditUpdate);
 
-    // Refresh credits every 5 minutes
-    const interval = setInterval(fetchCredits, 5 * 60 * 1000);
+    // Refresh credits every minute
+    const interval = setInterval(fetchCredits, 60 * 1000);
 
     return () => {
-      creditUpdateEvent.removeEventListener("creditUpdate", handleCreditUpdate);
+      window.removeEventListener("creditUpdate", handleCreditUpdate);
       clearInterval(interval);
     };
   }, []);
