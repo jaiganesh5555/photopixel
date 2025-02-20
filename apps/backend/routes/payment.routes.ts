@@ -77,22 +77,28 @@ router.post(
 
       if (method === "razorpay") {
         try {
-          const order = await PaymentService.createRazorpayOrder(
+          const order = await createRazorpayOrder(
             userId,
-            plan,
+            plan as "basic" | "premium",
             isAnnual
           );
+          
           console.log("Razorpay order created successfully:", order);
-          res.json(order);
+          
+          res.json({
+            ...order,
+            handler: function (response: any) {
+              console.log("Payment successful:", response);
+            },
+          });
           return;
         } catch (error) {
           console.error("Razorpay error:", error);
           res.status(500).json({
             message: "Error creating Razorpay order",
-            details:
-              process.env.NODE_ENV === "development"
-                ? (error as Error).message
-                : undefined,
+            details: process.env.NODE_ENV === "development" 
+              ? (error as Error).message 
+              : "Payment service temporarily unavailable"
           });
           return;
         }

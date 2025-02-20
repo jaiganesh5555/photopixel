@@ -119,42 +119,60 @@ export async function createRazorpayOrder(
   plan: keyof typeof PLAN_PRICES,
   isAnnual: boolean
 ) {
-  if (!razorpay) {
-    throw new Error("Razorpay is not configured");
+  if (!RAZORPAY_KEY_ID || !RAZORPAY_KEY_SECRET) {
+    console.error("Missing Razorpay credentials");
+    throw new Error("Payment service not configured");
   }
 
   try {
-    console.log("Creating Razorpay order:", { userId, plan, isAnnual });
-
-    const amount = isAnnual
-      ? PLAN_PRICES[plan].annual
+    // Calculate amount in INR (Razorpay only accepts INR)
+    const baseAmount = isAnnual 
+      ? PLAN_PRICES[plan].annual 
       : PLAN_PRICES[plan].monthly;
+    
+    // Convert to paise (Razorpay expects amount in paise)
+    const amountInPaise = Math.round(baseAmount * 100);
 
     const orderOptions = {
-      amount,
+      amount: amountInPaise,
       currency: "INR",
-      receipt: `rcpt_${Date.now()}`,
+      receipt: `order_${userId}_${Date.now()}`,
       notes: {
         userId,
         plan,
-        isAnnual: String(isAnnual),
-      },
+        isAnnual: String(isAnnual)
+      }
     };
 
-    console.log("Razorpay order options:", orderOptions);
+    console.log("Creating Razorpay order with options:", orderOptions);
+
+    if (!razorpay) {
+      throw new Error("Razorpay is not configured");
+    }
 
     const order = await razorpay.orders.create(orderOptions);
+
     console.log("Razorpay order created:", order);
 
     return {
-      id: order.id,
-      amount: order.amount,
-      currency: order.currency,
-      receipt: order.receipt,
+      orderId: order.id,
+      amount: amountInPaise,
+      currency: "INR",
+      key: RAZORPAY_KEY_ID,
+      name: "Photo AI",
+      description: `${plan.toUpperCase()} Plan ${isAnnual ? '(Annual)' : '(Monthly)'}`,
+      prefill: {
+        name: "User",
+        email: "user@example.com"
+      },
+      notes: orderOptions.notes
     };
   } catch (error) {
-    console.error("Razorpay order creation error:", error);
-    throw error;
+    console.error("Detailed Razorpay error:", error);
+    if (error instanceof Error) {
+      throw new Error(`Payment initialization failed: ${error.message}`);
+    }
+    throw new Error("Payment initialization failed: Service unavailable");
   }
 }
 
