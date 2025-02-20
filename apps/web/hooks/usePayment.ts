@@ -38,7 +38,6 @@ export function usePayment() {
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({ plan, isAnnual, method }),
-        credentials: "include",
       });
 
       const data = await response.json();
@@ -60,61 +59,82 @@ export function usePayment() {
           console.error("Stripe redirect error:", error);
           throw error;
         }
-      } else if (method === "razorpay" && data.id) {
+      } else if (method === "razorpay") {
+        // Make sure we have all required fields from the backend
+        if (!data.key || !data.orderId || !data.amount) {
+          throw new Error("Invalid payment configuration received");
+        }
+
         const options = {
-          key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
+          key: data.key,
           amount: data.amount,
           currency: data.currency || "INR",
-          name: "PhotoAI",
-          description: `${plan} Plan - ${isAnnual ? "Annual" : "Monthly"}`,
-          order_id: data.id,
-          handler: async (response: any) => {
+          name: data.name || "PhotoAI",
+          description: data.description || `${plan} Plan`,
+          order_id: data.orderId,
+          notes: data.notes,
+          retry: {
+            enabled: true,
+            max_count: 3
+          },
+          handler: async function (response: any) {
             try {
-              const verifyResponse = await fetch(
-                `${apiUrl}/payment/razorpay/verify`,
-                {
-                  method: "POST",
-                  headers: {
-                    "Content-Type": "application/json",
-                    Authorization: `Bearer ${token}`,
-                  },
-                  body: JSON.stringify({
-                    ...response,
-                    plan,
-                  }),
-                  credentials: "include",
-                }
-              );
+              console.log("Razorpay payment response:", response);
+
+              const verifyResponse = await fetch(`${apiUrl}/payment/razorpay/verify`, {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  Authorization: `Bearer ${token}`,
+                },
+                body: JSON.stringify({
+                  razorpay_payment_id: response.razorpay_payment_id,
+                  razorpay_order_id: response.razorpay_order_id,
+                  razorpay_signature: response.razorpay_signature,
+                  plan,
+                  isAnnual
+                }),
+              });
 
               const verifyData = await verifyResponse.json();
+              
               if (!verifyResponse.ok) {
-                throw new Error(
-                  verifyData.message || "Payment verification failed"
-                );
+                throw new Error(verifyData.message || "Payment verification failed");
               }
 
-              // Dispatch credit update event
-              creditUpdateEvent.dispatchEvent(new Event("creditUpdate"));
-
               toast({
-                title: "Payment Successful",
-                description: "Your subscription has been activated",
+                title: "Payment Successful!",
+                description: `Your subscription is active. Credits added: ${verifyData.credits}`,
+                variant: "default",
               });
 
+              creditUpdateEvent.dispatchEvent(new Event("creditUpdate"));
               router.push("/dashboard");
             } catch (error) {
-              console.error("Payment verification error:", error);
+              console.error("Verification error:", error);
               toast({
                 title: "Payment Failed",
-                description: "Please try again",
+                description: error instanceof Error ? error.message : "Please try again",
                 variant: "destructive",
               });
+              router.push("/pricing?status=failed");
             }
           },
+          modal: {
+            ondismiss: function() {
+              router.push("/pricing?status=cancelled");
+            },
+            confirm_close: true,
+            escape: false
+          },
+          prefill: data.prefill,
+          theme: data.theme
         };
 
-        const rzp = new (window as any).Razorpay(options);
-        rzp.open();
+        console.log("Initializing Razorpay with options:", options);
+
+        const razorpay = new (window as any).Razorpay(options);
+        razorpay.open();
       }
     } catch (error) {
       console.error("Payment error:", error);

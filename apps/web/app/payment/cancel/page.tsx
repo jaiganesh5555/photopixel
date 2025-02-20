@@ -11,7 +11,7 @@ export default function PaymentCancelPage() {
         <p className="mt-4">Your payment was cancelled.</p>
         <button
           onClick={() => router.push("/pricing")}
-          className="mt-8 rounded-md bg-primary px-4 py-2 text-white"
+          className="mt-8 rounded-md bg-primary  px-4 py-2 text-black hover:bg-primary/80 transition-colors duration-300 border border-black hover:border-primary"
         >
           Return to Pricing
         </button>

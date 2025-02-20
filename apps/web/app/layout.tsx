@@ -4,6 +4,7 @@ import "./globals.css";
 import { Appbar } from "@/components/Appbar";
 import { Providers } from "@/components/providers/Providers";
 import { Footer } from "@/components/Footer";
+import Script from "next/script";
 
 const geistSans = localFont({
   src: "./fonts/GeistVF.woff",
@@ -29,10 +30,10 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning className="dark">
       <head>
-        <script
+        <Script
+          id="razorpay-checkout"
           src="https://checkout.razorpay.com/v1/checkout.js"
-          async
-          defer
+          strategy="beforeInteractive"
         />
       </head>
       <body

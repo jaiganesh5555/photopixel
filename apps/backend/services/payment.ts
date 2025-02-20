@@ -24,23 +24,20 @@ const stripe = STRIPE_SECRET_KEY
     })
   : null;
 
-const razorpay =
-  RAZORPAY_KEY_ID && RAZORPAY_KEY_SECRET
-    ? new Razorpay({
-        key_id: RAZORPAY_KEY_ID,
-        key_secret: RAZORPAY_KEY_SECRET,
-      })
-    : null;
+const razorpay = new Razorpay({
+  key_id: process.env.RAZORPAY_KEY_ID!,
+  key_secret: process.env.RAZORPAY_KEY_SECRET!,
+});
 
-// Define plan prices
+// Define plan prices (in paise)
 export const PLAN_PRICES = {
   basic: {
-    monthly: 999, // $9.99
-    annual: 9990, // $99.90
+    monthly: 100, // ₹1
+    annual: 1000, // ₹10
   },
   premium: {
-    monthly: 1999, // $19.99
-    annual: 19990, // $199.90
+    monthly: 100, // ₹1,999
+    annual: 1000, // ₹19,990
   },
 } as const;
 
@@ -119,60 +116,49 @@ export async function createRazorpayOrder(
   plan: keyof typeof PLAN_PRICES,
   isAnnual: boolean
 ) {
-  if (!RAZORPAY_KEY_ID || !RAZORPAY_KEY_SECRET) {
-    console.error("Missing Razorpay credentials");
-    throw new Error("Payment service not configured");
-  }
-
   try {
-    // Calculate amount in INR (Razorpay only accepts INR)
-    const baseAmount = isAnnual 
-      ? PLAN_PRICES[plan].annual 
+    if (!process.env.RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET) {
+      throw new Error("Razorpay credentials not configured");
+    }
+
+    const amount = isAnnual
+      ? PLAN_PRICES[plan].annual
       : PLAN_PRICES[plan].monthly;
-    
-    // Convert to paise (Razorpay expects amount in paise)
-    const amountInPaise = Math.round(baseAmount * 100);
 
     const orderOptions = {
-      amount: amountInPaise,
+      amount: amount * 100, // Convert to paise
       currency: "INR",
-      receipt: `order_${userId}_${Date.now()}`,
+      receipt: `rcpt_${userId}_${Date.now()}`,
+      payment_capture: 1,
       notes: {
         userId,
         plan,
-        isAnnual: String(isAnnual)
-      }
+        isAnnual: String(isAnnual),
+      },
     };
 
-    console.log("Creating Razorpay order with options:", orderOptions);
-
-    if (!razorpay) {
-      throw new Error("Razorpay is not configured");
-    }
-
     const order = await razorpay.orders.create(orderOptions);
-
     console.log("Razorpay order created:", order);
 
     return {
       orderId: order.id,
-      amount: amountInPaise,
-      currency: "INR",
-      key: RAZORPAY_KEY_ID,
-      name: "Photo AI",
-      description: `${plan.toUpperCase()} Plan ${isAnnual ? '(Annual)' : '(Monthly)'}`,
+      amount: order.amount,
+      currency: order.currency,
+      key: process.env.RAZORPAY_KEY_ID,
+      name: "PhotoAI",
+      description: `${plan.toUpperCase()} Plan ${isAnnual ? "(Annual)" : "(Monthly)"}`,
       prefill: {
         name: "User",
-        email: "user@example.com"
+        email: "user@example.com",
       },
-      notes: orderOptions.notes
+      notes: orderOptions.notes,
+      theme: {
+        color: "#000000",
+      },
     };
   } catch (error) {
-    console.error("Detailed Razorpay error:", error);
-    if (error instanceof Error) {
-      throw new Error(`Payment initialization failed: ${error.message}`);
-    }
-    throw new Error("Payment initialization failed: Service unavailable");
+    console.error("Razorpay Order Error:", error);
+    throw error;
   }
 }
 
@@ -184,55 +170,90 @@ export async function verifyStripePayment(sessionId: string) {
   return session.payment_status === "paid";
 }
 
-export const verifyRazorpaySignature = (
-  orderId: string,
-  paymentId: string,
-  signature: string
-) => {
-  if (!razorpay) {
-    throw new Error("Razorpay is not configured");
+export const verifyRazorpaySignature = ({
+  paymentId,
+  orderId,
+  signature,
+}: {
+  paymentId: string;
+  orderId: string;
+  signature: string;
+}) => {
+  try {
+    if (!RAZORPAY_KEY_SECRET) {
+      throw new Error("Razorpay secret key not configured");
+    }
+
+    const body = orderId + "|" + paymentId;
+    const expectedSignature = crypto
+      .createHmac("sha256", RAZORPAY_KEY_SECRET)
+      .update(body.toString())
+      .digest("hex");
+
+    const isValid = expectedSignature === signature;
+    console.log("Signature verification:", { isValid, orderId, paymentId });
+    
+    return isValid;
+  } catch (error) {
+    console.error("Signature verification error:", error);
+    throw error;
   }
-
-  const body = orderId + "|" + paymentId;
-  const expectedSignature = crypto
-    .createHmac("sha256", RAZORPAY_KEY_SECRET!)
-    .update(body.toString())
-    .digest("hex");
-
-  return expectedSignature === signature;
 };
 
 export async function addCreditsForPlan(userId: string, plan: PlanType) {
-  const credits = CREDITS_PER_PLAN[plan];
+  try {
+    const credits = CREDITS_PER_PLAN[plan];
+    console.log("Adding credits:", { userId, plan, credits });
 
-  return await prismaClient.userCredit.upsert({
-    where: { userId },
-    update: { amount: { increment: credits } },
-    create: {
-      userId,
-      amount: credits,
-    },
-  });
+    return await prismaClient.userCredit.upsert({
+      where: { userId },
+      update: { amount: { increment: credits } },
+      create: {
+        userId,
+        amount: credits,
+      },
+    });
+  } catch (error) {
+    console.error("Credit addition error:", error);
+    throw error;
+  }
 }
 
 export async function createSubscriptionRecord(
   userId: string,
   plan: PlanType,
   paymentId: string,
-  orderId: string
+  orderId: string,
+  isAnnual: boolean = false
 ) {
-  return await prismaClient.$transaction(async (prisma) => {
-    const subscription = await prisma.subscription.create({
-      data: {
+  try {
+    return await prismaClient.$transaction(async (prisma) => {
+      console.log("Creating subscription:", {
         userId,
         plan,
         paymentId,
         orderId,
-      },
+        isAnnual,
+      });
+
+      const subscription = await prisma.subscription.create({
+        data: {
+          userId,
+          plan,
+          paymentId,
+          orderId,
+        },
+      });
+
+      console.log("Adding credits for plan:", plan);
+      await addCreditsForPlan(userId, plan);
+
+      return subscription;
     });
-    await addCreditsForPlan(userId, plan);
-    return subscription;
-  });
+  } catch (error) {
+    console.error("Subscription creation error:", error);
+    throw error;
+  }
 }
 
 export const PaymentService = {
