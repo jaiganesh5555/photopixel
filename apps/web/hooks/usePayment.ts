@@ -60,78 +60,76 @@ export function usePayment() {
           throw error;
         }
       } else if (method === "razorpay") {
-        // Make sure we have all required fields from the backend
-        if (!data.key || !data.orderId || !data.amount) {
-          throw new Error("Invalid payment configuration received");
-        }
-
         const options = {
           key: data.key,
           amount: data.amount,
-          currency: data.currency || "INR",
-          name: data.name || "PhotoAI",
-          description: data.description || `${plan} Plan`,
-          order_id: data.orderId,
-          notes: data.notes,
-          retry: {
-            enabled: true,
-            max_count: 3
-          },
+          currency: data.currency,
+          name: data.name,
+          description: data.description,
+          order_id: data.order_id,
           handler: async function (response: any) {
             try {
-              console.log("Razorpay payment response:", response);
+              const verifyResponse = await fetch(
+                `${apiUrl}/payment/razorpay/verify`,
+                {
+                  method: "POST",
+                  headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}`,
+                  },
+                  body: JSON.stringify({
+                    razorpay_payment_id: response.razorpay_payment_id,
+                    razorpay_order_id: response.razorpay_order_id,
+                    razorpay_signature: response.razorpay_signature,
+                    plan,
+                    isAnnual,
+                  }),
+                }
+              );
 
-              const verifyResponse = await fetch(`${apiUrl}/payment/razorpay/verify`, {
-                method: "POST",
-                headers: {
-                  "Content-Type": "application/json",
-                  Authorization: `Bearer ${token}`,
-                },
-                body: JSON.stringify({
-                  razorpay_payment_id: response.razorpay_payment_id,
-                  razorpay_order_id: response.razorpay_order_id,
-                  razorpay_signature: response.razorpay_signature,
-                  plan,
-                  isAnnual
-                }),
-              });
-
-              const verifyData = await verifyResponse.json();
-              
               if (!verifyResponse.ok) {
-                throw new Error(verifyData.message || "Payment verification failed");
+                const errorData = await verifyResponse.json();
+                throw new Error(
+                  errorData.message || "Payment verification failed"
+                );
               }
 
               toast({
                 title: "Payment Successful!",
-                description: `Your subscription is active. Credits added: ${verifyData.credits}`,
+                description: "Your subscription is now active",
                 variant: "default",
               });
 
-              creditUpdateEvent.dispatchEvent(new Event("creditUpdate"));
-              router.push("/dashboard");
+              // Dispatch credit update event
+              const event = new Event("creditUpdate");
+              window.dispatchEvent(event);
+
+              router.push("/payment/success");
             } catch (error) {
               console.error("Verification error:", error);
               toast({
                 title: "Payment Failed",
-                description: error instanceof Error ? error.message : "Please try again",
+                description:
+                  error instanceof Error ? error.message : "Please try again",
                 variant: "destructive",
               });
-              router.push("/pricing?status=failed");
+              router.push("/payment/cancel");
             }
           },
-          modal: {
-            ondismiss: function() {
-              router.push("/pricing?status=cancelled");
-            },
-            confirm_close: true,
-            escape: false
+          prefill: data.prefill || {
+            name: "",
+            email: "",
           },
-          prefill: data.prefill,
-          theme: data.theme
+          notes: data.notes,
+          theme: data.theme || {
+            color: "#000000",
+          },
+          modal: {
+            ondismiss: function () {
+              router.push("/payment/cancel");
+            },
+          },
         };
-
-        console.log("Initializing Razorpay with options:", options);
 
         const razorpay = new (window as any).Razorpay(options);
         razorpay.open();

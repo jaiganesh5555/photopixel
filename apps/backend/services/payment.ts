@@ -29,15 +29,15 @@ const razorpay = new Razorpay({
   key_secret: process.env.RAZORPAY_KEY_SECRET!,
 });
 
-// Define plan prices (in paise)
+// Define plan prices (in rupees)
 export const PLAN_PRICES = {
   basic: {
-    monthly: 100, // ₹1
-    annual: 1000, // ₹10
+    monthly: 1, // ₹1
+    annual: 10, // ₹10
   },
   premium: {
-    monthly: 100, // ₹1,999
-    annual: 1000, // ₹19,990
+    monthly: 1, // ₹1,999
+    annual: 10, // ₹19,990
   },
 } as const;
 
@@ -117,19 +117,25 @@ export async function createRazorpayOrder(
   isAnnual: boolean
 ) {
   try {
-    if (!process.env.RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET) {
-      throw new Error("Razorpay credentials not configured");
-    }
+    // Log credentials check
+    console.log("Razorpay Credentials:", {
+      keyId: process.env.RAZORPAY_KEY_ID?.substring(0, 6) + "...",
+      secretExists: !!process.env.RAZORPAY_KEY_SECRET,
+    });
 
-    const amount = isAnnual
+    // Calculate amount
+    const baseAmount = isAnnual
       ? PLAN_PRICES[plan].annual
       : PLAN_PRICES[plan].monthly;
+    const amountInPaise = baseAmount * 100;
 
-    const orderOptions = {
-      amount: amount * 100, // Convert to paise
+    console.log("Creating order with amount:", amountInPaise);
+
+    // Create order
+    const orderData = {
+      amount: amountInPaise,
       currency: "INR",
-      receipt: `rcpt_${userId}_${Date.now()}`,
-      payment_capture: 1,
+      receipt: `rcpt_${Date.now()}`,
       notes: {
         userId,
         plan,
@@ -137,27 +143,46 @@ export async function createRazorpayOrder(
       },
     };
 
-    const order = await razorpay.orders.create(orderOptions);
-    console.log("Razorpay order created:", order);
+    // Use promisified version
+    const order = await new Promise((resolve, reject) => {
+      razorpay.orders.create(orderData, (err: any, result: any) => {
+        if (err) {
+          console.error("Order creation error:", err);
+          reject(err);
+          return;
+        }
+        resolve(result);
+      });
+    });
 
+    console.log("Order created:", order);
+
+    // Return complete payment config
     return {
-      orderId: order.id,
-      amount: order.amount,
-      currency: order.currency,
       key: process.env.RAZORPAY_KEY_ID,
+      amount: amountInPaise,
+      currency: "INR",
       name: "PhotoAI",
       description: `${plan.toUpperCase()} Plan ${isAnnual ? "(Annual)" : "(Monthly)"}`,
+      order_id: (order as any).id,
       prefill: {
-        name: "User",
-        email: "user@example.com",
+        name: "",
+        email: "",
       },
-      notes: orderOptions.notes,
+      notes: {
+        userId,
+        plan,
+        isAnnual: String(isAnnual),
+      },
       theme: {
         color: "#000000",
       },
     };
   } catch (error) {
-    console.error("Razorpay Order Error:", error);
+    console.error("Razorpay Error:", {
+      error,
+      message: error instanceof Error ? error.message : "Unknown error",
+    });
     throw error;
   }
 }
@@ -192,7 +217,7 @@ export const verifyRazorpaySignature = ({
 
     const isValid = expectedSignature === signature;
     console.log("Signature verification:", { isValid, orderId, paymentId });
-    
+
     return isValid;
   } catch (error) {
     console.error("Signature verification error:", error);
