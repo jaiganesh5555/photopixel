@@ -6,6 +6,7 @@ const nextConfig = {
       "r2-us-east.photoai.com",
       "i0.wp.com",
       "encrypted-tbn1.gstatic.com",
+      "v3.fal.media",
     ],
   },
 };
