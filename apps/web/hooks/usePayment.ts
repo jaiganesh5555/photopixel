@@ -13,7 +13,8 @@ const apiUrl = BACKEND_URL;
 export const creditUpdateEvent = new EventTarget();
 
 export function usePayment() {
-  const [loading, setLoading] = useState(false);
+  const [stripeLoading, setStripeLoading] = useState(false);
+  const [razorpayLoading, setRazorPayLoading] = useState(false);
   const { toast } = useToast();
   const { getToken } = useAuth();
   const router = useRouter();
@@ -78,7 +79,12 @@ export function usePayment() {
     method: "stripe" | "razorpay"
   ) => {
     try {
-      setLoading(true);
+      if (method === "stripe") {
+        setStripeLoading(true);
+      } else {
+        setRazorPayLoading(true);
+      }
+      console.log("Initiating payment:", { plan, isAnnual, method });
       const token = await getToken();
       if (!token) throw new Error("Not authenticated");
 
@@ -192,11 +198,16 @@ export function usePayment() {
     } catch (error) {
       await handlePaymentResult(false, null, error);
     } finally {
-      setLoading(false);
+      setStripeLoading(false);
+      setRazorPayLoading(false);
     }
   };
 
-  return { handlePayment, loading };
+  return {
+    handlePayment,
+    stripeLoading,
+    razorpayLoading,
+  };
 }
 // Helper function to load Razorpay SDK
 function loadRazorpayScript(): Promise<void> {
