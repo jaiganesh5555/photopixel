@@ -19,7 +19,7 @@ export default function SubscriptionPage() {
     {
       type: PlanType.basic,
       name: "Basic Plan",
-      price: 500, // $50
+      price: 50, // $50
       credits: 500,
       features: [
         "500 Credits",
@@ -31,7 +31,7 @@ export default function SubscriptionPage() {
     {
       type: PlanType.premium,
       name: "Premium Plan",
-      price: 1000, // $100
+      price: 100, // $100
       credits: 1000,
       features: [
         "1000 Credits",
