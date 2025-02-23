@@ -187,52 +187,95 @@ router.post(
   authMiddleware,
   async (req: express.Request, res: express.Response) => {
     try {
-      if (!req.userId) {
-        res.status(401).json({ message: "Unauthorized" });
-        return;
-      }
-
       const {
         razorpay_payment_id,
         razorpay_order_id,
         razorpay_signature,
         plan,
+        isAnnual,
       } = req.body;
 
-      if (!razorpay_payment_id || !razorpay_order_id || !razorpay_signature) {
-        res.status(400).json({ message: "Missing required fields" });
-        return;
-      }
-
-      if (!Object.values(PlanType).includes(plan)) {
-        res.status(400).json({ message: "Invalid plan type" });
-        return;
-      }
-
-      const isValid = verifyRazorpaySignature(
-        razorpay_order_id,
-        razorpay_payment_id,
-        razorpay_signature
-      );
-
-      if (!isValid) {
-        res.status(400).json({ success: false });
-        return;
-      }
-
-      await createSubscriptionRecord(
-        req.userId,
+      // Debug log
+      console.log("Verification Request:", {
+        userId: req.userId,
+        paymentId: razorpay_payment_id,
+        orderId: razorpay_order_id,
+        signature: razorpay_signature,
         plan,
-        razorpay_payment_id,
-        razorpay_order_id
-      );
+        isAnnual,
+      });
 
-      res.json({ success: true });
-      return;
+      if (
+        !razorpay_payment_id ||
+        !razorpay_order_id ||
+        !razorpay_signature ||
+        !plan
+      ) {
+        res.status(400).json({
+          message: "Missing required fields",
+          received: {
+            razorpay_payment_id,
+            razorpay_order_id,
+            razorpay_signature,
+            plan,
+          },
+        });
+        return;
+      }
+
+      try {
+        const isValid = await PaymentService.verifyRazorpaySignature({
+          paymentId: razorpay_payment_id,
+          orderId: razorpay_order_id,
+          signature: razorpay_signature,
+        });
+
+        if (!isValid) {
+          res.status(400).json({ message: "Invalid payment signature" });
+          return;
+        }
+
+        // Create subscription and add credits
+        const subscription = await PaymentService.createSubscriptionRecord(
+          req.userId!,
+          plan as PlanType,
+          razorpay_payment_id,
+          razorpay_order_id,
+          isAnnual
+        );
+
+        // Get updated credits
+        const userCredit = await prismaClient.userCredit.findUnique({
+          where: { userId: req.userId! },
+          select: { amount: true },
+        });
+
+        console.log("Payment successful:", {
+          subscription,
+          credits: userCredit?.amount,
+        });
+
+        res.json({
+          success: true,
+          credits: userCredit?.amount || 0,
+          subscription,
+        });
+      } catch (verifyError) {
+        console.error("Verification process error:", verifyError);
+        res.status(500).json({
+          message: "Error processing payment verification",
+          details:
+            verifyError instanceof Error
+              ? verifyError.message
+              : "Unknown error",
+        });
+      }
     } catch (error) {
-      console.error("Razorpay verification error:", error);
-      res.status(500).json({ success: false });
-      return;
+      console.error("Route handler error:", error);
+      res.status(500).json({
+        message: "Error verifying payment",
+        details: error instanceof Error ? error.message : "Unknown error",
+      });
     }
   }
 );

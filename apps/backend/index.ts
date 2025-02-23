@@ -13,6 +13,7 @@ import { authMiddleware } from "./middleware";
 import dotenv from "dotenv";
 
 import paymentRoutes from "./routes/payment.routes";
+import {router as webhookRouter} from './routes/webhook.routes';
 
 dotenv.config();
 
@@ -23,7 +24,7 @@ const falAiModel = new FalAIModel();
 const app = express();
 app.use(
   cors({
-    origin: process.env.FRONTEND_URL || "https://photo.100xdevs.com",
+    origin: ["https://photo.100xdevs.com", "http://localhost:3000"],
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
@@ -284,6 +285,7 @@ app.post("/fal-ai/webhook/image", async (req, res) => {
 });
 
 app.use("/payment", paymentRoutes);
+app.use("/api/webhook",webhookRouter );
 
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
