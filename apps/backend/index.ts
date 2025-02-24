@@ -15,6 +15,9 @@ import dotenv from "dotenv";
 import paymentRoutes from "./routes/payment.routes";
 import {router as webhookRouter} from './routes/webhook.routes';
 
+const IMAGE_GEN_CREDITS = 1;
+const TRAIN_MODEL_CREDITS = 20;
+
 dotenv.config();
 
 const PORT = process.env.PORT || 8080;
@@ -104,8 +107,20 @@ app.post("/ai/generate", authMiddleware, async (req, res) => {
     });
     return;
   }
+  // check if the user has enough credits
+  const credits = await prismaClient.userCredit.findUnique({
+    where: {
+      id: req.userId!,
+    },
+  });
 
-  console.log("ji there");
+  if ((credits?.amount ?? 0) < IMAGE_GEN_CREDITS) {
+    res.status(411).json({
+      message: "Not enough credits",
+    });
+    return;
+  }
+
   const { request_id, response_url } = await falAiModel.generateImage(
     parsedBody.data.prompt,
     model.tensorPath
@@ -118,6 +133,15 @@ app.post("/ai/generate", authMiddleware, async (req, res) => {
       modelId: parsedBody.data.modelId,
       imageUrl: "",
       falAiRequestId: request_id,
+    },
+  });
+
+  await prismaClient.userCredit.update({
+    where: {
+      id: req.userId!,
+    },
+    data: {
+      amount: { decrement: IMAGE_GEN_CREDITS },
     },
   });
 
@@ -155,6 +179,20 @@ app.post("/pack/generate", authMiddleware, async (req, res) => {
     return;
   }
 
+  // check if the user has enough credits
+  const credits = await prismaClient.userCredit.findUnique({
+    where: {
+      id: req.userId!,
+    },
+  });
+
+  if ((credits?.amount ?? 0) < IMAGE_GEN_CREDITS * prompts.length) {
+    res.status(411).json({
+      message: "Not enough credits",
+    });
+    return;
+  }
+
   let requestIds: { request_id: string }[] = await Promise.all(
     prompts.map((prompt) =>
       falAiModel.generateImage(prompt.prompt, model.tensorPath!)
@@ -169,6 +207,15 @@ app.post("/pack/generate", authMiddleware, async (req, res) => {
       imageUrl: "",
       falAiRequestId: requestIds[index].request_id,
     })),
+  });
+
+  await prismaClient.userCredit.update({
+    where: {
+      id: req.userId!,
+    },
+    data: {
+      amount: { decrement: IMAGE_GEN_CREDITS * prompts.length },
+    },
   });
 
   res.json({
@@ -228,6 +275,20 @@ app.post("/fal-ai/webhook/train", async (req, res) => {
     requestId,
   });
 
+  // check if the user has enough credits
+  const credits = await prismaClient.userCredit.findUnique({
+    where: {
+      id: req.userId!,
+    },
+  });
+
+  if ((credits?.amount ?? 0) < TRAIN_MODEL_CREDITS) {
+    res.status(411).json({
+      message: "Not enough credits",
+    });
+    return;
+  }
+
   const { imageUrl } = await falAiModel.generateImageSync(
     result.data.diffusers_lora_file.url
   );
@@ -241,6 +302,15 @@ app.post("/fal-ai/webhook/train", async (req, res) => {
       //@ts-ignore
       tensorPath: result.data.diffusers_lora_file.url,
       thumbnail: imageUrl,
+    },
+  });
+
+  await prismaClient.userCredit.update({
+    where: {
+      id: req.userId!,
+    },
+    data: {
+      amount: { decrement: TRAIN_MODEL_CREDITS },
     },
   });
 
