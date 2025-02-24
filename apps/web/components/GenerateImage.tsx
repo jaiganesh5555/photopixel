@@ -84,7 +84,7 @@ export function GenerateImage() {
                         className="px-8"
                     >
                         <Sparkles className="mr-2 h-4 w-4" />
-                        {isGenerating ? "Generating..." : "Generate"}
+                        {isGenerating ? "Generating..." : "Generate (1 credit)"}
                     </Button>
                 </motion.div>
             </div>

@@ -207,9 +207,7 @@ export function Train() {
           </motion.div>
         </CardContent>
         <CardFooter className="flex justify-between">
-          <Button variant="outline" onClick={() => router.push("/")}>
-            Cancel
-          </Button>
+          <div></div>
           <Button
             onClick={trainModal}
             disabled={
@@ -228,7 +226,7 @@ export function Train() {
             ) : (
               <>
                 <Brain className="h-4 w-4" />
-                Train Model
+                Train Model (20 credits)
               </>
             )}
           </Button>
