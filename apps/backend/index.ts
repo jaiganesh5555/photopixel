@@ -110,7 +110,7 @@ app.post("/ai/generate", authMiddleware, async (req, res) => {
   // check if the user has enough credits
   const credits = await prismaClient.userCredit.findUnique({
     where: {
-      id: req.userId!,
+      userId: req.userId!,
     },
   });
 
@@ -182,7 +182,7 @@ app.post("/pack/generate", authMiddleware, async (req, res) => {
   // check if the user has enough credits
   const credits = await prismaClient.userCredit.findUnique({
     where: {
-      id: req.userId!,
+      userId: req.userId!,
     },
   });
 
@@ -278,7 +278,7 @@ app.post("/fal-ai/webhook/train", async (req, res) => {
   // check if the user has enough credits
   const credits = await prismaClient.userCredit.findUnique({
     where: {
-      id: req.userId!,
+      userId: req.userId!,
     },
   });
 
