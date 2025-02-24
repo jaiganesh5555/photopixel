@@ -46,7 +46,7 @@ export function PaymentModal({
         </DialogHeader>
 
         <div className="grid gap-4 py-4">
-          <Button
+          {/* <Button
             onClick={() => handlePaymentClick("stripe")}
             disabled={stripeLoading}
             className={cn(
@@ -73,7 +73,7 @@ export function PaymentModal({
                 </>
               )}
             </div>
-          </Button>
+          </Button> */}
 
           <Button
             onClick={() => handlePaymentClick("razorpay")}
