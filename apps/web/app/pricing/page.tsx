@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { PlanCard } from "@/components/subscription/PlanCard";
-import { PaymentModal } from "@/components/subscription/PaymentModal";
 import { PlanType } from "@/types";
 import { usePayment } from "@/hooks/usePayment";
 import { motion } from "framer-motion";
