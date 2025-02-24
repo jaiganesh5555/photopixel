@@ -32,12 +32,12 @@ const razorpay = new Razorpay({
 // Define plan prices (in rupees)
 export const PLAN_PRICES = {
   basic: {
-    monthly: 1, // ₹1
-    annual: 10, // ₹10
+    monthly: 4000, // ₹1
+    annual: 40000, // ₹10
   },
   premium: {
-    monthly: 1, // ₹1,999
-    annual: 10, // ₹19,990
+    monthly: 8000, // ₹1,999
+    annual: 80000, // ₹19,990
   },
 } as const;
 
