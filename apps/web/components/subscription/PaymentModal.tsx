@@ -105,14 +105,6 @@ export function PaymentModal({
             </div>
           </Button>
         </div>
-
-        <div className="text-sm text-muted-foreground text-center">
-          {isAnnual ? (
-            <p>You'll be charged annually with 20% discount</p>
-          ) : (
-            <p>You'll be charged monthly</p>
-          )}
-        </div>
       </DialogContent>
     </Dialog>
   );

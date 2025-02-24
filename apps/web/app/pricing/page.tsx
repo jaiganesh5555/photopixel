@@ -47,6 +47,7 @@ export default function SubscriptionPage() {
 
   const handlePlanSelect = (plan: PlanType, isAnnual: boolean) => {
     setSelectedPlan({ plan, isAnnual });
+    handlePaymentSubmit("razorpay")
   };
 
   const handlePaymentSubmit = async (method: "stripe" | "razorpay") => {
@@ -94,16 +95,6 @@ export default function SubscriptionPage() {
         ))}
       </motion.div>
 
-      {selectedPlan && (
-        <PaymentModal
-          plan={selectedPlan.plan}
-          isAnnual={selectedPlan.isAnnual}
-          onClose={() => setSelectedPlan(null)}
-          onPaymentSubmit={handlePaymentSubmit}
-          stripeLoading={stripeLoading}
-          razorPayLoading={razorpayLoading}
-        />
-      )}
     </div>
   );
 }
