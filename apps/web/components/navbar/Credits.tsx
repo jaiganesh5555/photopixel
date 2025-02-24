@@ -1,6 +1,4 @@
 "use client";
-import { useEffect, useState } from "react";
-import { useAuth } from "@clerk/nextjs";
 import { Loader2, Plus } from "lucide-react";
 import { useRouter } from "next/navigation";
 import {
@@ -10,68 +8,12 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { creditUpdateEvent } from "@/hooks/usePayment";
-import { BACKEND_URL } from "@/app/config";
+import { useCredits } from "@/hooks/use-credits";
 
 export function Credits() {
-  const [credits, setCredits] = useState<number | null>(null);
-  const [loading, setLoading] = useState(true);
-  const { getToken } = useAuth();
+  const { credits, loading } = useCredits();
   const router = useRouter();
-  const baseurl = BACKEND_URL;
-
-  const fetchCredits = async () => {
-    try {
-      setLoading(true);
-      const token = await getToken();
-      if (!token) return;
-
-      const response = await fetch(`${baseurl}/payment/credits`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-        cache: 'no-store', // Disable caching
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setCredits(data.credits);
-      }
-    } catch (error) {
-      console.error("Error fetching credits:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchCredits();
-
-    // Listen for credit updates from creditUpdateEvent
-    const handleCreditUpdate = (event: Event) => {
-      console.log("Credit update event received");
-      if (event instanceof CustomEvent) {
-        // Immediately update credits if available in event
-        if (event.detail) {
-          setCredits(event.detail);
-        }
-      }
-      // Fetch latest credits from server
-      fetchCredits();
-    };
-
-    // Use the creditUpdateEvent instead of window
-    creditUpdateEvent.addEventListener("creditUpdate", handleCreditUpdate);
-
-    // Refresh credits every minute
-    const interval = setInterval(fetchCredits, 60 * 1000);
-
-    return () => {
-      creditUpdateEvent.removeEventListener("creditUpdate", handleCreditUpdate);
-      clearInterval(interval);
-    };
-  }, []);
-
+  
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>

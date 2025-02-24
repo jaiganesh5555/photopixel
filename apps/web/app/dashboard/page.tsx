@@ -10,20 +10,12 @@ export default function DashboardPage() {
   return (
     <div className="container mx-auto px-4 py-24 min-h-screen">
       <div className="max-w-6xl mx-auto space-y-8">
-        <div className="text-center space-y-4">
-          <h1 className="text-4xl font-bold tracking-tight bg-gradient-to-r from-white to-gray-400 bg-clip-text text-transparent">
-            Your Creative Dashboard
-          </h1>
-          <p className="text-muted-foreground">
-            Transform your photos with AI-powered tools
-          </p>
-        </div>
 
         <Tabs defaultValue="camera" className="w-full">
           <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 gap-4 rounded-lg p-2 bg-muted/20">
             <TabsTrigger
               value="camera"
-              className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+              className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground cursor-pointer"
             >
               <span className="flex items-center gap-2">
                 <svg
@@ -45,7 +37,7 @@ export default function DashboardPage() {
             </TabsTrigger>
             <TabsTrigger
               value="generate"
-              className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+              className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground cursor-pointer"
             >
               <span className="flex items-center gap-2">
                 <svg
@@ -73,7 +65,7 @@ export default function DashboardPage() {
             </TabsTrigger>
             <TabsTrigger
               value="packs"
-              className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+              className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground cursor-pointer"
             >
               <span className="flex items-center gap-2">
                 <svg
@@ -95,7 +87,7 @@ export default function DashboardPage() {
             </TabsTrigger>
             <TabsTrigger
               value="train"
-              className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+              className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground cursor-pointer"
             >
               <span className="flex items-center gap-2">
                 <svg

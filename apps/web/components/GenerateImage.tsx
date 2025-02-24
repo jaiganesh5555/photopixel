@@ -9,15 +9,23 @@ import { SelectModel } from "./Models"
 import toast from "react-hot-toast"
 import { motion } from "framer-motion"
 import { Sparkles } from "lucide-react"
-
+import { useCredits } from "@/hooks/use-credits"
+import { useRouter } from "next/navigation"
 export function GenerateImage() {
     const [prompt, setPrompt] = useState("")
     const [selectedModel, setSelectedModel] = useState<string>()
     const [isGenerating, setIsGenerating] = useState(false)
     const { getToken } = useAuth()
+    const { credits } = useCredits();
+    const router = useRouter()
 
     const handleGenerate = async () => {
         if (!prompt || !selectedModel) return
+
+        if (credits <= 0) {
+            router.push("/pricing")
+            return
+        }
         
         setIsGenerating(true)
         try {
@@ -45,12 +53,6 @@ export function GenerateImage() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
         >
-            <div className="space-y-2">
-                <h2 className="text-2xl font-semibold">Generate Image</h2>
-                <p className="text-muted-foreground">
-                    Describe your imagination and let AI bring it to life
-                </p>
-            </div>
 
             <div className="space-y-4">
                 <SelectModel
@@ -66,8 +68,8 @@ export function GenerateImage() {
                     <Textarea
                         value={prompt}
                         onChange={(e) => setPrompt(e.target.value)}
-                        placeholder="A serene landscape with mountains reflecting in a crystal-clear lake at sunset..."
-                        className="min-h-[120px] text-lg resize-none"
+                        placeholder="Step 2 - Give a prompt"
+                        className="min-h-[120px] text-2xl resize-none"
                     />
                 </motion.div>
 

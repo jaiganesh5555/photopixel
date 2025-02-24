@@ -62,7 +62,7 @@ export function SelectModel({
       <div className="flex items-center justify-between">
         <div className="space-y-1">
           <h2 className="text-2xl font-semibold tracking-tight">
-            Select Model
+            Step 1 -Select Model
           </h2>
           <p className="text-sm text-muted-foreground">
             Choose an AI model to generate your images
@@ -79,7 +79,7 @@ export function SelectModel({
       {modelLoading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {[1, 2, 3].map((_, i) => (
-            <Card key={i} className="h-[280px] animate-pulse bg-muted/50" />
+            <Card key={i} className="h-[220px] animate-pulse bg-muted/50" />
           ))}
         </div>
       ) : (
@@ -95,7 +95,7 @@ export function SelectModel({
               <motion.div key={model.id} variants={item}>
                 <Card
                   className={cn(
-                    "group relative overflow-hidden transition-all duration-300 hover:shadow-xl",
+                    "group relative overflow-hidden transition-all duration-300 hover:shadow-xl cursor-pointer",
                     selectedModel === model.id && "ring-2 ring-primary"
                   )}
                   onClick={() => setSelectedModel(model.id)}
@@ -113,15 +113,6 @@ export function SelectModel({
                         <h3 className="text-lg font-semibold text-white">
                           {model.name}
                         </h3>
-                        {selectedModel === model.id && (
-                          <Badge
-                            variant="secondary"
-                            className="bg-white/20 backdrop-blur-sm"
-                          >
-                            <Sparkles className="w-3 h-3 mr-1" />
-                            Selected
-                          </Badge>
-                        )}
                       </div>
                     </div>
                   </div>

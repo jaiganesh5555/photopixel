@@ -27,7 +27,7 @@ import { useAuth } from "@clerk/nextjs";
 import toast from "react-hot-toast";
 import { motion } from "framer-motion";
 import { Brain, Upload } from "lucide-react";
-
+import { useCredits } from "@/hooks/use-credits";
 export function Train() {
   const { getToken } = useAuth();
   const [zipUrl, setZipUrl] = useState("");
@@ -39,8 +39,13 @@ export function Train() {
   const [name, setName] = useState("");
   const [modelTraining, setModelTraining] = useState(false);
   const router = useRouter();
+  const { credits } = useCredits();
 
   async function trainModal() {
+    if (credits <= 0) {
+      router.push("/pricing")
+      return
+    }
     const input = {
       zipUrl,
       type,

@@ -25,6 +25,7 @@ export default function SubscriptionPage() {
         "500 Credits",
         "Basic Support",
         "Standard Processing",
+        "Flux Lora",
         "24/7 Email Support",
       ],
     },
@@ -38,7 +39,7 @@ export default function SubscriptionPage() {
         "Priority Support",
         "Fast Processing",
         "Advanced Features",
-        "24/7 Priority Support",
+        "Flux Lora",
         "Custom Solutions",
       ],
     },
@@ -58,8 +59,8 @@ export default function SubscriptionPage() {
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-4 py-12 ">
       <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
+        initial={{ opacity: 0, y: 30 }}
+        animate={{ opacity: 1, y: 25 }}
         transition={{ duration: 0.5, ease: "easeOut" }}
         className="max-w-4xl text-center"
       >

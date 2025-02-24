@@ -7,12 +7,12 @@ export interface TImage {
 }
 
 const DEFAULT_BLUR_IMAGE =
-  "https://static.vecteezy.com/system/resources/thumbnails/016/894/217/small/white-background-white-polished-metal-abstract-white-gradient-background-blurred-white-backdrop-illustration-vector.jpg";
+  "https://i0.wp.com/www.cssscript.com/wp-content/uploads/2016/09/progressive-image-loading-pure-css.jpg?fit=542%2C407&ssl=1";
 
 export function ImageCard(props: TImage) {
   return (
     <div className="border rounded-xl max-w-[400px] cursor-pointer">
-      <div className="flex p-4 gap-4">
+      <div className="flex p-4 gap-4 min-h-40">
         {props.status === "Generated" ? (
           <img src={props.imageUrl} className="rounded" />
         ) : (

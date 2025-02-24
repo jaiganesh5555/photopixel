@@ -54,7 +54,7 @@ export function PaymentModal({
               stripeLoading && "cursor-not-allowed opacity-50"
             )}
           >
-            <div className="flex items-center justify-center gap-2">
+            <div className="flex items-center justify-center gap-2 cursor-pointer">
               {stripeLoading ? (
                 <>
                   <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
@@ -84,7 +84,7 @@ export function PaymentModal({
               razorPayLoading && "cursor-not-allowed opacity-50"
             )}
           >
-            <div className="flex items-center justify-center gap-2">
+            <div className="flex items-center justify-center gap-2 cursor-pointer">
               {razorPayLoading ? (
                 <>
                   <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />

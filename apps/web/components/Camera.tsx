@@ -111,7 +111,7 @@ export function Camera() {
       </div>
 
       <motion.div
-        className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"
+        className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-4"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
@@ -128,21 +128,11 @@ export function Camera() {
               </motion.div>
             ))
           : images.map((image, index) => (
-              <motion.div
-                key={image.id}
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ delay: index * 0.1 }}
-                whileHover={{ scale: 1.02 }}
-                className="transform transition-all duration-200 cursor-pointer"
-                onClick={() => handleImageClick(image, index)}
-              >
-                <ImageCard
-                  id={image.id}
-                  imageUrl={image.imageUrl}
-                  status={image.status}
-                />
-              </motion.div>
+              <ImageCard
+                id={image.id}
+                imageUrl={image.imageUrl}
+                status={image.status}
+              />
             ))}
       </motion.div>
 
