@@ -138,7 +138,7 @@ app.post("/ai/generate", authMiddleware, async (req, res) => {
 
   await prismaClient.userCredit.update({
     where: {
-      id: req.userId!,
+      userId: req.userId!,
     },
     data: {
       amount: { decrement: IMAGE_GEN_CREDITS },
@@ -211,7 +211,7 @@ app.post("/pack/generate", authMiddleware, async (req, res) => {
 
   await prismaClient.userCredit.update({
     where: {
-      id: req.userId!,
+      userId: req.userId!,
     },
     data: {
       amount: { decrement: IMAGE_GEN_CREDITS * prompts.length },
@@ -307,7 +307,7 @@ app.post("/fal-ai/webhook/train", async (req, res) => {
 
   await prismaClient.userCredit.update({
     where: {
-      id: req.userId!,
+      userId: req.userId!,
     },
     data: {
       amount: { decrement: TRAIN_MODEL_CREDITS },
