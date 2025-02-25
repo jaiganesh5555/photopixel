@@ -47,7 +47,7 @@ export function Camera() {
       }
     };
     pollImages();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [images]);
 
   const fetchImages = async () => {
@@ -128,11 +128,24 @@ export function Camera() {
               </motion.div>
             ))
           : images.map((image, index) => (
-              <ImageCard
-                id={image.id}
-                imageUrl={image.imageUrl}
-                status={image.status}
-              />
+              <div
+                key={image.id}
+                className="cursor-pointer transition-transform hover:scale-[1.02]"
+                onClick={() => handleImageClick(image, index)}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    handleImageClick(image, index);
+                  }
+                }}
+              >
+                <ImageCard
+                  id={image.id}
+                  imageUrl={image.imageUrl}
+                  status={image.status}
+                />
+              </div>
             ))}
       </motion.div>
 
@@ -148,50 +161,69 @@ export function Camera() {
         open={!!selectedImage}
         onOpenChange={() => setSelectedImage(null)}
       >
-        <DialogContent className="max-w-4xl w-full bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-          <DialogHeader>
-            <DialogTitle>{selectedImage?.prompt}</DialogTitle>
-            <DialogDescription>
+        <DialogContent className="max-w-7xl w-[95vw] p-6 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+          <DialogHeader className="mb-4">
+            <DialogTitle className="text-2xl font-bold tracking-tight">
+              {selectedImage?.prompt}
+            </DialogTitle>
+            <DialogDescription className="text-sm text-muted-foreground">
               Generated on{" "}
               {selectedImage?.createdAt
-                ? new Date(selectedImage.createdAt).toLocaleDateString()
+                ? new Date(selectedImage.createdAt).toLocaleDateString(
+                    undefined,
+                    {
+                      year: "numeric",
+                      month: "long",
+                      day: "numeric",
+                    }
+                  )
                 : ""}
             </DialogDescription>
           </DialogHeader>
 
-          <div className="relative aspect-square w-full overflow-hidden rounded-lg">
+          <div className="relative w-full h-[70vh] overflow-hidden rounded-lg bg-muted/30">
             {selectedImage && (
-              <Image
-                src={selectedImage.imageUrl}
-                alt={selectedImage.prompt || "Generated image"}
-                fill
-                className="object-cover"
-                priority
-              />
+              <div className="group relative w-full h-full flex items-center justify-center">
+                <Image
+                  src={selectedImage.imageUrl}
+                  alt={selectedImage.prompt || "Generated image"}
+                  fill
+                  className="object-contain transition-all duration-300 group-hover:scale-[1.02]"
+                  priority
+                  sizes="(max-width: 768px) 95vw, (max-width: 1200px) 85vw, 75vw"
+                  quality={100}
+                />
+                <div className="absolute inset-0 bg-gradient-to-b from-black/5 to-black/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+              </div>
             )}
           </div>
 
-          <div className="flex justify-between items-center mt-4">
-            <div className="flex gap-2">
+          <div className="mt-6 flex justify-between items-center">
+            <div className="flex gap-3">
               <Button
                 variant="outline"
                 size="icon"
                 onClick={handlePrevious}
                 disabled={currentImageIndex === 0}
+                className="hover:bg-muted/80"
               >
-                <ChevronLeft className="h-4 w-4" />
+                <ChevronLeft className="h-5 w-5" />
               </Button>
               <Button
                 variant="outline"
                 size="icon"
                 onClick={handleNext}
                 disabled={currentImageIndex === images.length - 1}
+                className="hover:bg-muted/80"
               >
-                <ChevronRight className="h-4 w-4" />
+                <ChevronRight className="h-5 w-5" />
               </Button>
             </div>
 
-            <div className="flex gap-2">
+            <div className="flex items-center gap-3">
+              <span className="text-sm text-muted-foreground">
+                {currentImageIndex + 1} of {images.length}
+              </span>
               <Button
                 variant="outline"
                 onClick={() =>
@@ -201,6 +233,7 @@ export function Camera() {
                     selectedImage.prompt || "generated-image"
                   )
                 }
+                className="hover:bg-muted/80"
               >
                 <Download className="h-4 w-4 mr-2" />
                 Download
@@ -209,6 +242,7 @@ export function Camera() {
                 variant="outline"
                 size="icon"
                 onClick={() => setSelectedImage(null)}
+                className="hover:bg-muted/80"
               >
                 <X className="h-4 w-4" />
               </Button>

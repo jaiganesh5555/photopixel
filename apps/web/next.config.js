@@ -1,12 +1,35 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   images: {
-    domains: [
-      "r2-us-west.photoai.com",
-      "r2-us-east.photoai.com",
-      "i0.wp.com",
-      "encrypted-tbn1.gstatic.com",
-      "v3.fal.media",
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "r2-us-west.photoai.com",
+      },
+      {
+        protocol: "https",
+        hostname: "r2-us-east.photoai.com",
+      },
+      {
+        protocol: "https",
+        hostname: "i0.wp.com",
+      },
+      {
+        protocol: "https",
+        hostname: "encrypted-tbn1.gstatic.com",
+      },
+      {
+        protocol: "https",
+        hostname: "v3.fal.media",
+      },
+      {
+        protocol: "https",
+        hostname: "avatars.githubusercontent.com",
+      },
+      {
+        protocol: "https",
+        hostname: "cloudflare-ipfs.com",
+      },
     ],
   },
 };
