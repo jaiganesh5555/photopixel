@@ -1,84 +1,146 @@
-# Turborepo starter
+# 100xPhoto - AI Image Generation Platform
 
-This Turborepo starter is maintained by the Turborepo core team.
+100xPhoto is a powerful AI image platform that lets you generate stunning images and train custom AI models. Built with cutting-edge technology, it enables users to create unique AI-generated artwork and train personalized models on their own image datasets. Whether you're an artist looking to expand your creative possibilities or a developer building AI-powered image applications, 100xPhoto provides an intuitive interface and robust capabilities for AI image generation and model training.
 
-## Using this example
+## Tech Stack
 
-Run the following command:
+- **Frontend**: Next.js 14 (App Router), TypeScript, Tailwind CSS, Shadcn/UI
+- **Backend**: Node.js with TypeScript
+- **Authentication**: Clerk
+- **Containerization**: Docker
+- **Package Management**: Bun
+- **Monorepo Management**: Turborepo
 
-```sh
-npx create-turbo@latest
-```
-
-## What's inside?
-
-This Turborepo includes the following packages/apps:
+## Project Structure
 
 ### Apps and Packages
 
-- `docs`: a [Next.js](https://nextjs.org/) app
-- `web`: another [Next.js](https://nextjs.org/) app
-- `@repo/ui`: a stub React component library shared by both `web` and `docs` applications
-- `@repo/eslint-config`: `eslint` configurations (includes `eslint-config-next` and `eslint-config-prettier`)
-- `@repo/typescript-config`: `tsconfig.json`s used throughout the monorepo
+- `web`: Next.js frontend application
+- `backend`: Node.js backend service
+- `@repo/ui`: Shared React component library
+- `@repo/typescript-config`: Shared TypeScript configurations
+- `@repo/eslint-config`: Shared ESLint configurations
 
-Each package/app is 100% [TypeScript](https://www.typescriptlang.org/).
+## Getting Started
 
-### Utilities
+### Prerequisites
 
-This Turborepo has some additional tools already setup for you:
+- Docker
+- Bun (for local development)
+- Clerk Account (for authentication)
 
-- [TypeScript](https://www.typescriptlang.org/) for static type checking
-- [ESLint](https://eslint.org/) for code linting
-- [Prettier](https://prettier.io) for code formatting
+### Environment Setup
 
-### Build
+1. Create `.env` files:
 
-To build all apps and packages, run the following command:
-
-```
-cd my-turborepo
-pnpm build
-```
-
-### Develop
-
-To develop all apps and packages, run the following command:
-
-```
-cd my-turborepo
-pnpm dev
+```bash
+# apps/web/.env.local
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=your_publishable_key
+CLERK_SECRET_KEY=your_secret_key
+NEXT_PUBLIC_BACKEND_URL=http://localhost:8080
 ```
 
-### Remote Caching
 
-> [!TIP]
-> Vercel Remote Cache is free for all plans. Get started today at [vercel.com](https://vercel.com/signup?/signup?utm_source=remote-cache-sdk&utm_campaign=free_remote_cache).
+### Local Development
 
-Turborepo can use a technique known as [Remote Caching](https://turbo.build/repo/docs/core-concepts/remote-caching) to share cache artifacts across machines, enabling you to share build caches with your team and CI/CD pipelines.
+```bash
+# Install dependencies
+bun install
 
-By default, Turborepo will cache locally. To enable Remote Caching you will need an account with Vercel. If you don't have an account you can [create one](https://vercel.com/signup?utm_source=turborepo-examples), then enter the following commands:
+# Run development servers
+bun run dev
 
-```
-cd my-turborepo
-npx turbo login
-```
-
-This will authenticate the Turborepo CLI with your [Vercel account](https://vercel.com/docs/concepts/personal-accounts/overview).
-
-Next, you can link your Turborepo to your Remote Cache by running the following command from the root of your Turborepo:
-
-```
-npx turbo link
+# Build all packages
+bun run build
 ```
 
-## Useful Links
+## Features
 
-Learn more about the power of Turborepo:
+- AI-powered image generation
+- User authentication and authorization
+- Image gallery with preview
+- Download generated images
+- Responsive design
 
-- [Tasks](https://turbo.build/repo/docs/core-concepts/monorepos/running-tasks)
-- [Caching](https://turbo.build/repo/docs/core-concepts/caching)
-- [Remote Caching](https://turbo.build/repo/docs/core-concepts/remote-caching)
-- [Filtering](https://turbo.build/repo/docs/core-concepts/monorepos/filtering)
-- [Configuration Options](https://turbo.build/repo/docs/reference/configuration)
-- [CLI Usage](https://turbo.build/repo/docs/reference/command-line-reference)
+## Development Commands
+
+```bash
+# Run frontend only
+bun run start:web
+
+# Run backend only
+bun run start:backend
+
+# Run both frontend and backend
+bun run dev
+```
+
+## Docker Setup
+
+### Environment Variables Required
+
+```bash
+# Frontend Environment Variables
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_live_Y2xlcmsuMTAweGRldnMuY29tJA
+NEXT_PUBLIC_BACKEND_URL=https://api.photoaiv2.100xdevs.com
+NEXT_PUBLIC_STRIPE_KEY=pk_test_51QsCmFEI53oUr5PHZw5ErO4Xy2lNh9LkH9vXDb8wc7BOvfSPc0i4xt6I5Qy3jaBLnvg9wPenPoeW0LvQ1x3GtfUm00eNFHdBDd
+CLERK_SECRET_KEY=your_clerk_secret_key
+
+# Backend Environment Variables
+DATABASE_URL=your_database_url
+```
+
+### Docker Commands
+
+```bash
+# Navigate to docker directory
+cd docker
+
+# Build images
+docker build -f Dockerfile.frontend -t photoai-frontend ..
+docker build -f Dockerfile.backend -t photoai-backend ..
+
+# Run frontend container
+docker run -p 3000:3000 \
+  -e NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_live_Y2xlcmsuMTAweGRldnMuY29tJA \
+  -e NEXT_PUBLIC_BACKEND_URL=https://api.photoaiv2.100xdevs.com \
+  -e NEXT_PUBLIC_STRIPE_KEY=pk_test_51QsCmFEI53oUr5PHZw5ErO4Xy2lNh9LkH9vXDb8wc7BOvfSPc0i4xt6I5Qy3jaBLnvg9wPenPoeW0LvQ1x3GtfUm00eNFHdBDd \
+  -e CLERK_SECRET_KEY=your_clerk_secret_key \
+  photoai-frontend
+
+# Run backend container
+docker run -p 8080:8080 \
+  -e DATABASE_URL=your_database_url \
+  photoai-backend
+
+```
+
+
+## Project Structure
+
+```
+.
+├── apps
+│   ├── web/                 # Next.js frontend
+│   └── backend/            # Node.js backend
+├── packages
+│   ├── ui/                 # Shared UI components
+│   ├── typescript-config/  # Shared TS config
+│   └── eslint-config/     # Shared ESLint config
+├── docker/                # Docker configuration
+│   ├── Dockerfile.frontend
+│   └── Dockerfile.backend
+└── package.json
+```
+
+## Contributing
+
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add some amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+## License
+
+This project is licensed under the MIT License - see the LICENSE file for details
