@@ -24,7 +24,7 @@ router.post(
   async (req: express.Request, res: express.Response) => {
     try {
       const { plan, isAnnual, method } = req.body;
-      const userId = req.userId;
+      const userId = req.userId!;
       const userEmail = (req as any).user?.email;
 
       console.log("Payment request received:", {
@@ -197,7 +197,7 @@ router.post(
 
       // Debug log
       console.log("Verification Request:", {
-        userId: req.userId,
+        userId : req.userId,
         paymentId: razorpay_payment_id,
         orderId: razorpay_order_id,
         signature: razorpay_signature,
@@ -228,6 +228,9 @@ router.post(
           paymentId: razorpay_payment_id,
           orderId: razorpay_order_id,
           signature: razorpay_signature,
+          isAnnual: isAnnual,
+          plan: plan as PlanType,
+          userId: req.userId!
         });
 
         if (!isValid) {
@@ -246,7 +249,7 @@ router.post(
 
         // Get updated credits
         const userCredit = await prismaClient.userCredit.findUnique({
-          where: { userId: req.userId! },
+          where: { userId : req.userId! },
           select: { amount: true },
         });
 
@@ -286,7 +289,7 @@ router.get(
     try {
       const subscription = await prismaClient.subscription.findFirst({
         where: {
-          userId: req.params.userId,
+          userId: req.userId!,
         },
         orderBy: {
           createdAt: "desc",
@@ -315,7 +318,7 @@ router.get(
     try {
       const userCredit = await prismaClient.userCredit.findUnique({
         where: {
-          userId: req.params.userId,
+          userId: req.userId,
         },
         select: {
           amount: true,
@@ -454,6 +457,30 @@ router.post("/verify", async (req, res) => {
     res.status(500).json({
       message: "Error verifying payment",
       details: error instanceof Error ? error.message : "Unknown error",
+    });
+    return;
+  }
+});
+
+
+router.get("/transactions",authMiddleware, async (req, res) => {
+  try {
+    const transactions = await prismaClient.transaction.findMany({
+      where: {
+        userId: req.userId!,
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
+    });
+
+    res.status(200).json({
+      transactions,
+    });
+    return;
+  } catch (error) {
+    res.status(500).json({
+      message: "Internal server error",
     });
     return;
   }
