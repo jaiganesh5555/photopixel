@@ -151,7 +151,6 @@ model Transaction {
   paymentId   String
   orderId     String
   plan        PlanType
-  isAnnual    Boolean
   status      TransactionStatus @default(PENDING)
   createdAt   DateTime         @default(now())
   updatedAt   DateTime         @updatedAt

@@ -140,12 +140,7 @@ export default function TransactionsPage() {
                     </div>
                     <div className="space-y-1">
                       <p className="text-sm text-muted-foreground">Plan</p>
-                      <p className="font-medium">
-                        {transaction.plan}{" "}
-                        <span className="text-sm text-muted-foreground">
-                          ({transaction.isAnnual ? "Annual" : "Monthly"})
-                        </span>
-                      </p>
+                      <p className="font-medium">{transaction.plan.toUpperCase()}</p>
                     </div>
                     <div className="space-y-1">
                       <p className="text-sm text-muted-foreground">

@@ -31,14 +31,8 @@ const razorpay = new Razorpay({
 
 // Define plan prices (in rupees)
 export const PLAN_PRICES = {
-  basic: {
-    monthly: 4000, // ₹1
-    annual: 40000, // ₹10
-  },
-  premium: {
-    monthly: 8000, // ₹1,999
-    annual: 80000, // ₹19,990
-  },
+  basic: 4000, 
+  premium: 8000, 
 } as const;
 
 // Define credit amounts per plan
@@ -54,8 +48,7 @@ export async function createTransactionRecord(
   paymentId: string,
   orderId: string,
   plan: PlanType,
-  isAnnual: boolean,
-  status: "PENDING" | "SUCCESS" | "FAILED" = "PENDING" // Default to PENDING
+  status: "PENDING" | "SUCCESS" | "FAILED" = "PENDING"
 ) {
   try {
     return await withRetry(() =>
@@ -67,8 +60,8 @@ export async function createTransactionRecord(
           paymentId,
           orderId,
           plan,
-          isAnnual,
           status,
+          
         },
       })
     );
@@ -81,7 +74,6 @@ export async function createTransactionRecord(
 export async function createStripeSession(
   userId: string,
   plan: "basic" | "premium",
-  isAnnual: boolean,
   email: string
 ) {
   try {
@@ -89,18 +81,8 @@ export async function createStripeSession(
       throw new Error("Stripe is not configured");
     }
 
-    console.log("Creating Stripe session:", { userId, plan, isAnnual, email });
+    const price = PLAN_PRICES[plan];
 
-    // Validate plan type
-    if (!PLAN_PRICES[plan]) {
-      throw new Error("Invalid plan type");
-    }
-
-    // Get the correct price
-    const price = PLAN_PRICES[plan][isAnnual ? "annual" : "monthly"];
-    console.log("Selected price:", price);
-
-    // Create the checkout session
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ["card"],
       line_items: [
@@ -109,7 +91,7 @@ export async function createStripeSession(
             currency: "usd",
             product_data: {
               name: `${plan.charAt(0).toUpperCase() + plan.slice(1)} Plan`,
-              description: `${isAnnual ? "Annual" : "Monthly"} subscription`,
+              description: `One-time payment for ${CREDITS_PER_PLAN[plan]} credits`,
             },
             unit_amount: price,
           },
@@ -117,17 +99,15 @@ export async function createStripeSession(
         },
       ],
       mode: "payment",
-      success_url: `${process.env.FRONTEND_URL}/payment/success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${process.env.FRONTEND_URL}/payment/cancel`,
+      success_url: `${process.env.FRONTEND_URL}/payment/success?session_id={CHECKOUT_SESSION_ID}&token=${Buffer.from(JSON.stringify({timestamp: Date.now(), orderId: '{CHECKOUT_SESSION_ID}'})).toString('base64')}`,
+      cancel_url: `${process.env.FRONTEND_URL}/payment/cancel?session_id={CHECKOUT_SESSION_ID}&token=${Buffer.from(JSON.stringify({timestamp: Date.now(), orderId: '{CHECKOUT_SESSION_ID}'})).toString('base64')}`,
       customer_email: email,
       metadata: {
         userId,
         plan,
-        isAnnual: String(isAnnual),
       },
     });
 
-    // Create initial pending transaction record
     await createTransactionRecord(
       userId,
       price,
@@ -135,11 +115,9 @@ export async function createStripeSession(
       session.payment_intent as string,
       session.id,
       plan,
-      isAnnual,
       "PENDING"
     );
 
-    console.log("Stripe session created:", session);
     return session;
   } catch (error) {
     console.error("Stripe session creation error:", error);
@@ -156,25 +134,12 @@ export async function getStripeSession(sessionId: string) {
 
 export async function createRazorpayOrder(
   userId: string,
-  plan: keyof typeof PLAN_PRICES,
-  isAnnual: boolean
+  plan: keyof typeof PLAN_PRICES
 ) {
   try {
-    // Log credentials check
-    console.log("Razorpay Credentials:", {
-      keyId: process.env.RAZORPAY_KEY_ID?.substring(0, 6) + "...",
-      secretExists: !!process.env.RAZORPAY_KEY_SECRET,
-    });
+    const amount = PLAN_PRICES[plan];
+    const amountInPaise = amount * 100;
 
-    // Calculate amount
-    const baseAmount = isAnnual
-      ? PLAN_PRICES[plan].annual
-      : PLAN_PRICES[plan].monthly;
-    const amountInPaise = baseAmount * 100;
-
-    console.log("Creating order with amount:", amountInPaise);
-
-    // Create order
     const orderData = {
       amount: amountInPaise,
       currency: "INR",
@@ -182,43 +147,32 @@ export async function createRazorpayOrder(
       notes: {
         userId,
         plan,
-        isAnnual: String(isAnnual),
       },
     };
 
-    // Use promisified version
     const order = await new Promise((resolve, reject) => {
       razorpay.orders.create(orderData, (err: any, result: any) => {
-        if (err) {
-          console.error("Order creation error:", err);
-          reject(err);
-          return;
-        }
+        if (err) reject(err);
         resolve(result);
       });
     });
 
-    // Use actual order id and payment id
     await createTransactionRecord(
       userId,
-      baseAmount,
+      amount,
       "INR",
-      "", // Payment ID will be updated after payment is completed
-      (order as any).id, // Use the actual order ID
+      "",
+      (order as any).id,
       plan,
-      isAnnual,
       "PENDING"
     );
 
-    console.log("Order created:", order);
-
-    // Return complete payment config
     return {
       key: process.env.RAZORPAY_KEY_ID,
       amount: amountInPaise,
       currency: "INR",
       name: "PhotoAI",
-      description: `${plan.toUpperCase()} Plan ${isAnnual ? "(Annual)" : "(Monthly)"}`,
+      description: `${plan.toUpperCase()} Plan - ${CREDITS_PER_PLAN[plan]} Credits`,
       order_id: (order as any).id,
       prefill: {
         name: "",
@@ -227,17 +181,13 @@ export async function createRazorpayOrder(
       notes: {
         userId,
         plan,
-        isAnnual: String(isAnnual),
       },
       theme: {
         color: "#000000",
       },
     };
   } catch (error) {
-    console.error("Razorpay Error:", {
-      error,
-      message: error instanceof Error ? error.message : "Unknown error",
-    });
+    console.error("Razorpay Error:", error);
     throw error;
   }
 }
@@ -248,10 +198,9 @@ export async function verifyStripePayment(sessionId: string) {
   }
 
   const session = await stripe.checkout.sessions.retrieve(sessionId);
-  const { userId, plan, isAnnual } = session.metadata as {
+  const { userId, plan } = session.metadata as {
     userId: string;
     plan: PlanType;
-    isAnnual: string;
   };
 
   // Find existing pending transaction
@@ -285,7 +234,6 @@ export const verifyRazorpaySignature = async ({
   orderId,
   signature,
   userId,
-  isAnnual,
   plan,
 }: {
   paymentId: string;
@@ -293,7 +241,6 @@ export const verifyRazorpaySignature = async ({
   signature: string;
   userId: string;
   plan: PlanType;
-  isAnnual: boolean;
 }) => {
   try {
     if (!RAZORPAY_KEY_SECRET) {
