@@ -1,9 +1,14 @@
+import { redirect } from "next/navigation";
+import TransactionsPage from "@/components/payment/PurchasesPage";
+import React from "react";
+import { auth } from "@clerk/nextjs/server";
 
-import TransactionsPage from '@/components/payment/PurchasesPage'
-import React from 'react'
+export default async function PurchasesPage() {
+  const { userId } = await auth();
 
-export default function PurchasesPage() {
-  return (
-    <TransactionsPage/>
-  )
+  if (!userId) {
+    redirect("/");
+  }
+
+  return <TransactionsPage />;
 }
