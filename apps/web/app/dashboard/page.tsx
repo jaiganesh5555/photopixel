@@ -15,7 +15,7 @@ export default async function DashboardPage() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-24 min-h-screen">
+    <div className="max-w-6xl mx-auto px-4 py-24 min-h-screen">
       <div className="space-y-8">
         <Tabs defaultValue="camera">
           <TabsList className="inline-flex h-10 items-center justify-start rounded-lg p-1 dark:bg-muted/50 bg-pink-50">
@@ -45,7 +45,7 @@ export default async function DashboardPage() {
             </TabsTrigger>
           </TabsList>
 
-          <div className="mt-8 p-4 bg-card rounded-lg border shadow-sm">
+          <div className="mt-8 bg-card rounded-lg">
             <TabsContent
               value="camera"
               className="mt-0 focus-visible:outline-none"

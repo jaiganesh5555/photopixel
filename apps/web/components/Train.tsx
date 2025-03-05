@@ -59,6 +59,8 @@ export function Train() {
   const { credits } = useCredits();
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
   const [previewFiles, setPreviewFiles] = useState<File[]>([]);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
 
   async function trainModal() {
     if (credits <= 0) {
@@ -88,6 +90,7 @@ export function Train() {
       toast.error("Failed to start model training");
     } finally {
       setModelTraining(false);
+      setPreviewFiles([]);
     }
   }
 
@@ -100,9 +103,6 @@ export function Train() {
       return newFiles;
     });
   };
-
-  const [isUploading, setIsUploading] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState(0);
 
   const handleUpload = async (files: File[]) => {
     setIsUploading(true);

@@ -43,10 +43,10 @@ export function UploadModal({
   return (
     <Card className="w-full rounded-none border-none mx-auto shadow-none">
       <CardHeader className="border-b pb-4 px-0">
-        <CardTitle className="text-2xl font-bold text-blue-500">
+        <CardTitle className="md:text-xl text-lg font-semibold text-emerald-500">
           Upload Modal Images
         </CardTitle>
-        <CardDescription className="text-sm text-neutral-500">
+        <CardDescription className="text-xs text-muted-foreground">
           Supports multiple images upload
         </CardDescription>
       </CardHeader>
@@ -59,8 +59,8 @@ export function UploadModal({
           className={cn(
             "flex flex-col items-center justify-center border-2 border-dashed rounded-lg p-10 transition-all",
             isDragging
-              ? "border-blue-500 bg-blue-100"
-              : "border-muted-foreground hover:border-blue-400",
+              ? "border-emerald-500 bg-emerald-100"
+              : "border-muted-foreground hover:border-emerald-400",
             isUploading && "pointer-events-none opacity-80"
           )}
         >
