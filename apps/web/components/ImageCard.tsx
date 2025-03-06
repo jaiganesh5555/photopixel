@@ -1,23 +1,31 @@
-import { Skeleton } from "./ui/skeleton";
+"use client";
 
-export interface TImage {
-  id: string;
-  status: string;
-  imageUrl: string;
+import Image from "next/image";
+import { TImage } from "@/components/Camera";
+
+interface ImageCardProps extends TImage {
+  onClick: () => void;
 }
 
-const DEFAULT_BLUR_IMAGE =
-  "https://i0.wp.com/www.cssscript.com/wp-content/uploads/2016/09/progressive-image-loading-pure-css.jpg?fit=542%2C407&ssl=1";
+export function ImageCard({ id, status, imageUrl, onClick }: ImageCardProps) {
+  if (!imageUrl) return null;
 
-export function ImageCard(props: TImage) {
   return (
-    <div className="border rounded-xl max-w-[400px] cursor-pointer">
-      <div className="flex p-4 gap-4 min-h-40">
-        {props.status === "Generated" ? (
-          <img src={props.imageUrl} className="rounded" />
-        ) : (
-          <img src={DEFAULT_BLUR_IMAGE} />
-        )}
+    <div
+      className="relative border rounded-lg overflow-hidden shadow-lg transition-transform duration-200 hover:scale-105 cursor-pointer"
+      onClick={onClick}
+    >
+      <Image
+        key={id}
+        src={imageUrl}
+        alt={status === "Generated" ? "Generated image" : "Loading image"}
+        width={400}
+        height={300}
+        className="object-cover w-full h-48"
+        priority
+      />
+      <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-30 transition-opacity duration-200 opacity-0 hover:opacity-100">
+        <span className="text-white font-semibold">{status}</span>
       </div>
     </div>
   );
@@ -25,9 +33,10 @@ export function ImageCard(props: TImage) {
 
 export function ImageCardSkeleton() {
   return (
-    <div className="border rounded-xl max-w-[400px] p-2 cursor-pointer w-full">
-      <div className="flex p-4 gap-4">
-        <Skeleton className="rounded h-40 w-[300px]" />
+    <div className="relative border rounded-lg overflow-hidden shadow-lg animate-pulse">
+      <div className="bg-gray-300 w-full h-48" />
+      <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-30">
+        <span className="text-white font-semibold">Loading...</span>
       </div>
     </div>
   );
