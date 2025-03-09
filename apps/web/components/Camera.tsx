@@ -1,4 +1,5 @@
 "use client";
+
 import { useAuth } from "@clerk/nextjs";
 import { BACKEND_URL } from "@/app/config";
 import axios from "axios";
@@ -95,25 +96,31 @@ export function Camera() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-semibold tracking-tight">Your Gallery</h2>
-        <span className="text-sm text-muted-foreground">
+        <h2 className="text-2xl font-semibold">Your Gallery</h2>
+        <span className="text-xs select-none bg-secondary/40 font-semibold border border-secondary text-muted-foreground px-2 py-1 rounded-full">
           {images.length} images
         </span>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+      <motion.div
+        className="columns-1 md:columns-3 lg:columns-3 gap-4"
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+      >
         {imagesLoading
           ? [...Array(8)].map((_, i) => (
-              <div
+              <motion.div
                 key={i}
-                className="bg-gray-300 h-48 rounded-lg animate-pulse"
+                className="bg-neutral-300 h-48 rounded-lg animate-pulse"
               />
             ))
           : images.map((image, index) => (
               <div
-                key={image.id}
+                key={image.id +index}
+                className="cursor-pointer transition-transform mb-4 hover:scale-[1.02]"
                 onClick={() => handleImageClick(image, index)}
               >
                 <ImageCard
@@ -130,7 +137,7 @@ export function Camera() {
                 />
               </div>
             ))}
-      </div>
+      </motion.div>
 
       {!imagesLoading && images.length === 0 && (
         <motion.div
@@ -160,7 +167,7 @@ export function Camera() {
             >
               <div className="absolute top-4 left-4 right-4 text-white">
                 <p className="text-lg font-medium truncate">
-                  {selectedImage.prompt}
+                  {selectedImage?.prompt}
                 </p>
                 <p className="text-sm">{formatDate(selectedImage.createdAt)}</p>
               </div>
