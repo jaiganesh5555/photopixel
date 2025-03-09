@@ -98,18 +98,12 @@ export function Camera() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-<<<<<<< HEAD
         <h2 className="text-2xl font-semibold">Your Gallery</h2>
         <span className="text-xs select-none bg-secondary/40 font-semibold border border-secondary text-muted-foreground px-2 py-1 rounded-full">
-=======
-        <h2 className="text-2xl font-semibold tracking-tight">Your Gallery</h2>
-        <span className="text-sm text-muted-foreground">
->>>>>>> main
           {images.length} images
         </span>
       </div>
 
-<<<<<<< HEAD
       <motion.div
         className="columns-1 md:columns-3 lg:columns-3 gap-4"
         initial={{ opacity: 0, y: 20 }}
@@ -119,27 +113,17 @@ export function Camera() {
         {imagesLoading
           ? [...Array(8)].map((_, i) => (
               <motion.div
-=======
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-        {imagesLoading
-          ? [...Array(8)].map((_, i) => (
-              <div
->>>>>>> main
                 key={i}
-                className="bg-gray-300 h-48 rounded-lg animate-pulse"
+                className="bg-neutral-300 h-48 rounded-lg animate-pulse"
               />
             ))
           : images.map((image, index) => (
               <div
-                key={image.id}
-<<<<<<< HEAD
+                key={image.id +index}
                 className="cursor-pointer transition-transform mb-4 hover:scale-[1.02]"
-=======
->>>>>>> main
                 onClick={() => handleImageClick(image, index)}
               >
                 <ImageCard
-                  title={image.prompt}
                   id={image.id}
                   status={image.status}
                   imageUrl={image.imageUrl}
@@ -153,54 +137,20 @@ export function Camera() {
                 />
               </div>
             ))}
-      </div>
+      </motion.div>
 
       {!imagesLoading && images.length === 0 && (
-<<<<<<< HEAD
-        <div className="text-center py-12 bg-secondary/10 rounded-lg border border-secondary/50">
-          <p className="text-muted-foreground text-sm font-semibold">
-=======
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           className="text-center py-12"
         >
           <p className="text-muted-foreground">
->>>>>>> main
             No images yet. Start by generating some!
           </p>
         </motion.div>
       )}
 
-<<<<<<< HEAD
-      <Dialog
-        open={!!selectedImage}
-        onOpenChange={() => setSelectedImage(null)}
-      >
-        <DialogContent className="max-w-7xl w-[95vw] p-6 bg-background backdrop-blur rounded-none">
-          <DialogHeader className="mb-4 rounded-none">
-            <DialogTitle className="text-2xl font-bold tracking-tight">
-              {selectedImage?.prompt}
-            </DialogTitle>
-            <DialogDescription className="text-sm text-muted-foreground">
-              Generated on{" "}
-              {selectedImage?.createdAt
-                ? new Date(selectedImage.createdAt).toLocaleDateString(
-                    undefined,
-                    {
-                      year: "numeric",
-                      month: "long",
-                      day: "numeric",
-                    }
-                  )
-                : ""}
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="relative w-full h-[70vh] overflow-hidden bg-muted">
-            {selectedImage && (
-              <div className="group relative w-full h-full flex items-center justify-center">
-=======
       {selectedImage && (
         <Dialog
           open={!!selectedImage}
@@ -217,13 +167,12 @@ export function Camera() {
             >
               <div className="absolute top-4 left-4 right-4 text-white">
                 <p className="text-lg font-medium truncate">
-                  {selectedImage.prompt}
+                  {selectedImage?.prompt}
                 </p>
                 <p className="text-sm">{formatDate(selectedImage.createdAt)}</p>
               </div>
 
               <div className="relative aspect-square w-full">
->>>>>>> main
                 <Image
                   src={selectedImage.imageUrl}
                   alt={selectedImage.prompt || "Generated image"}
@@ -252,38 +201,6 @@ export function Camera() {
                 </Button>
               </div>
 
-<<<<<<< HEAD
-            <div className="flex items-center gap-3">
-              <span className="text-sm text-muted-foreground">
-                {currentImageIndex + 1} of {images.length}
-              </span>
-              <Button
-                variant="custom"
-                onClick={() =>
-                  selectedImage &&
-                  handleDownload(
-                    selectedImage.imageUrl,
-                    selectedImage.prompt || "generated-image"
-                  )
-                }
-                className="cusror-pointer"
-              >
-                <Download className="h-4 w-4 mr-2" />
-                Download
-              </Button>
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={() => setSelectedImage(null)}
-                className="hover:bg-muted/80"
-              >
-                <X className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
-=======
               <div className="absolute inset-0 flex items-center justify-between p-4">
                 {currentImageIndex > 0 && (
                   <Button
@@ -310,7 +227,6 @@ export function Camera() {
           </DialogContent>
         </Dialog>
       )}
->>>>>>> main
     </div>
   );
 }
