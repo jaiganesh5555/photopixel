@@ -32,7 +32,7 @@ export class FalAIModel {
       }
     } catch (error) {
       console.error("Error checking ZIP URL:", error);
-      throw new Error(`ZIP URL validation failed: ${error as any}.message}`);
+      throw new Error(`ZIP URL validation failed: ${(error as Error).message}`);
     }
 
     const { request_id, response_url } = await fal.queue.submit(

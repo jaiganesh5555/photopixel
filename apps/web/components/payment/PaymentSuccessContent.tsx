@@ -26,13 +26,12 @@ export function PaymentSuccessContent() {
   useEffect(() => {
     const verifyPayment = async () => {
       try {
-        const sessionId = searchParams.get("session_id");
         const paymentId = searchParams.get("razorpay_payment_id");
         const orderId = searchParams.get("razorpay_order_id");
         const signature = searchParams.get("razorpay_signature");
 
         // If no payment parameters, assume direct navigation after successful payment
-        if (!sessionId && !paymentId) {
+        if (!paymentId) {
           setVerified(true);
           setVerifying(false);
           return;
@@ -46,7 +45,7 @@ export function PaymentSuccessContent() {
         // Handle Razorpay verification
         if (paymentId && orderId && signature) {
           const response = await fetch(
-            `${BACKEND_URL}/payment/razorpay/verify`,
+            `${BACKEND_URL}/payment/verify`,
             {
               method: "POST",
               headers: {
@@ -60,25 +59,6 @@ export function PaymentSuccessContent() {
               }),
             }
           );
-
-          const data = await response.json();
-
-          if (response.ok && data.success) {
-            setVerified(true);
-          } else {
-            router.push("/payment/cancel");
-          }
-        }
-        // Handle Stripe verification
-        else if (sessionId) {
-          const response = await fetch(`${BACKEND_URL}/payment/verify`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${token}`,
-            },
-            body: JSON.stringify({ sessionId }),
-          });
 
           const data = await response.json();
 

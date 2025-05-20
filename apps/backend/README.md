@@ -42,8 +42,6 @@ CLERK_JWT_PUBLIC_KEY=your_clerk_public_key
 SIGNING_SECRET=your_clerk_webhook_signing_secret
 
 # Payments
-STRIPE_SECRET_KEY=your_stripe_secret_key
-STRIPE_WEBHOOK_SECRET=your_stripe_webhook_secret
 RAZORPAY_KEY_ID=your_razorpay_key_id
 RAZORPAY_KEY_SECRET=your_razorpay_secret_key
 

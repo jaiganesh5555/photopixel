@@ -1,18 +1,32 @@
 FROM oven/bun:1
 
+# Install OpenSSL
+RUN apt-get update -y && apt-get install -y openssl
+
 WORKDIR /usr/src/app
 
-COPY package.json bun.lockb ./
+# Copy workspace configuration files
+COPY package.json bun.lockb turbo.json ./
+COPY packages/common/package.json ./packages/common/package.json
+COPY packages/db/package.json ./packages/db/package.json
+COPY apps/backend/package.json ./apps/backend/package.json
 
+# Install dependencies
 RUN bun install
 
-COPY . .
+# Copy source code
+COPY packages/common ./packages/common
+COPY packages/db ./packages/db
+COPY apps/backend ./apps/backend
+COPY tsconfig.json ./
 
-
+# Build packages and backend
+RUN bunx turbo build --filter=common...
+RUN bunx turbo build --filter=db...
 RUN bunx turbo build --filter=backend...
 RUN bun run generate:db
 
 EXPOSE 8080
 
-# Start the frontend application
-CMD ["bun", "start:backend"]
+WORKDIR /usr/src/app/apps/backend
+CMD ["bun", "run", "start"]

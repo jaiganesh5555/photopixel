@@ -1,7 +1,7 @@
 "use client";
 
 import { SignInButton, SignedIn, SignedOut, UserButton } from "@clerk/nextjs";
-import { Button } from "./ui/button";
+import { Button } from "@/components/ui/button";
 import { Credits } from "./navbar/Credits";
 import Link from "next/link";
 import { motion } from "framer-motion";
@@ -42,7 +42,7 @@ export function Appbar() {
                   <path d="M15 6v12a3 3 0 1 0 3-3H6a3 3 0 1 0 3 3V6a3 3 0 1 0-3 3h12a3 3 0 1 0-3-3" />
                 </svg>
                 <span className="hidden font-bold font-mono text-xl sm:inline-block">
-                  100<span className="text-pink-500">x</span>Photos
+                  Pixel<span className="text-pink-500">Forge</span>
                 </span>
               </Link>
             </motion.div>

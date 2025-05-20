@@ -1,15 +1,18 @@
+version: '3.8'
+
 services:
   postgres:
-    image: postgres
-    ports:
-      - 5432:5432
+    image: postgres:13
+    container_name: postgres-db
     restart: always
     environment:
-      - POSTGRES_PASSWORD = mypassword
-      - POSTGRES_USER = myuser
-      - POSTGRES_HOST_AUTH_METHOD=trust
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: photoai
     volumes:
-      - pgdata:/var/lib/postgresql
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
 
   backend:
     build:
@@ -18,22 +21,24 @@ services:
     restart: always
     container_name: backend-service
     ports:
-      - 8080:8080
+      - "8080:8080"
     environment: 
-      - FAL_KEY=""
-      - S3_ACCESS_KEY=""
-      - S3_SECRET_KEY=""
-      - BUCKET_NAME=""
-      - ENDPOINT=""
-      - RAZORPAY_KEY_ID=""
-      - RAZORPAY_KEY_SECRET=""
-      - SIGNING_SECRET=""
-      - CLERK_JWT_PUBLIC_KEY=""
-      - WEBHOOK_BASE_URL=""
-      - FRONTEND_URL=""
-      - CLERK_SECRET_KEY=
-      - CLERK_ISSUER=
-      - STRIPE_SECRET_KEY=""
+      - FAL_KEY=b52643e2-8949-4580-a940-f8096f36481f:e8ba75f28d606a68ee1625bdca399a86
+      # R2 Credentials - Get new ones from Cloudflare Dashboard > R2 > Your Bucket > Settings > API Tokens
+      # Required permissions: Object Read, Object Write, Bucket Read, Bucket Write
+      - S3_ACCESS_KEY=b19187e641e2296e859ec7ff19830865
+      - S3_SECRET_KEY=f995ddc0b1921e451144406b6b6ee6d2786d42ef61de9833286be3d195d3b3c8
+      - BUCKET_NAME=photoai
+      # R2 Endpoint format: https://<account-id>.r2.cloudflarestorage.com
+      # Get your account ID from Cloudflare Dashboard > R2 > Overview
+      - ENDPOINT=https://a8ec3fab43eb1d9dfe4ff82a6a400aec.r2.cloudflarestorage.com/bucket
+      - RAZORPAY_KEY_ID=rzp_test_Ko0dyX9U1MhrZr
+      - RAZORPAY_KEY_SECRET=jnUliRPYgqoxqjGTRAOQIq27
+      - SIGNING_SECRET=sk_test_yBuw0Yp9mON5A2UVI2yzWuBSA5iM9AvqBSZ2UoLo9X
+      - CLERK_JWT_PUBLIC_KEY="-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA4vpzryLAzbFfGbH4CtwiCV+F3vfuCtED17NgVIC1Cgt3vcxXEWA55tmNvCVsRbs0RcrYMWZaGDTjfy9F0UUcnKLTX9Xn0bA8UKthATzFKbuabRdkbAkDqq6J/hjCxwC8LcKh2pBd6i1NCOcot7N86aNpcIiSLLL4tFT1s0kzHDa942rQGQwkUGkGrAKc4YR3tTPBjtaFUCH2w1nJcb/aKXsM58M13/ZB67PsF7U2GtvYvb9cYroIgU/zlpOy3ldahzLLNfoYKVz9pGwao7Bb/64eI+Gnm17SoZmUPKeLkPV9xWUA3hyw4/vowKF/DEs+e0pZZNj5Fkjx+AgmMrRNuwIDAQAB\n-----END PUBLIC KEY-----"
+      - WEBHOOK_BASE_URL=http://localhost:8080
+      - FRONTEND_URL=http://localhost:3000
+      - CLERK_SECRET_KEY=sk_test_K1mftagGOwvcrT3bdDdggqTXjBPsPkHtzKrNxYEV98
     depends_on:
       - postgres
 
@@ -44,13 +49,13 @@ services:
     restart: always
     container_name: frontend-service
     ports:
-      - 3000:3000
+      - "3000:3000"
     environment:
       - NEXT_PUBLIC_BACKEND_URL=http://backend:8080
-      - NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=
-      - CLERK_SECRET_KEY=
+      - NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_Z2xhZC1zdGFsbGlvbi02NS5jbGVyay5hY2NvdW50cy5kZXYk
+      - CLERK_SECRET_KEY=sk_test_K1mftagGOwvcrT3bdDdggqTXjBPsPkHtzKrNxYEV98
     depends_on:
       - backend
 
 volumes:
-  pgdata:
+  postgres_data:

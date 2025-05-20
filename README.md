@@ -83,7 +83,6 @@ bun run dev
 # Frontend Environment Variables
 NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_live_Y2xlcmsuMTAweGRldnMuY29tJA
 NEXT_PUBLIC_BACKEND_URL=https://api.photoaiv2.100xdevs.com
-NEXT_PUBLIC_STRIPE_KEY=pk_test_51QsCmFEI53oUr5PHZw5ErO4Xy2lNh9LkH9vXDb8wc7BOvfSPc0i4xt6I5Qy3jaBLnvg9wPenPoeW0LvQ1x3GtfUm00eNFHdBDd
 CLERK_SECRET_KEY=your_clerk_secret_key
 
 # Backend Environment Variables
@@ -104,7 +103,6 @@ docker build -f Dockerfile.backend -t photoai-backend ..
 docker run -p 3000:3000 \
   -e NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_live_Y2xlcmsuMTAweGRldnMuY29tJA \
   -e NEXT_PUBLIC_BACKEND_URL=https://api.photoaiv2.100xdevs.com \
-  -e NEXT_PUBLIC_STRIPE_KEY=pk_test_51QsCmFEI53oUr5PHZw5ErO4Xy2lNh9LkH9vXDb8wc7BOvfSPc0i4xt6I5Qy3jaBLnvg9wPenPoeW0LvQ1x3GtfUm00eNFHdBDd \
   -e CLERK_SECRET_KEY=your_clerk_secret_key \
   photoai-frontend
 

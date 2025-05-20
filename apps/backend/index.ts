@@ -1,5 +1,6 @@
 import { fal } from "@fal-ai/client";
 import express from "express";
+import type { Request, Response, NextFunction } from "express";
 import {
   TrainModel,
   GenerateImage,
@@ -10,32 +11,39 @@ import { S3Client } from "bun";
 import { FalAIModel } from "./models/FalAIModel";
 import cors from "cors";
 import { authMiddleware } from "./middleware";
-import dotenv from "dotenv";
 
 import paymentRoutes from "./routes/payment.routes";
-import { router as webhookRouter } from "./routes/webhook.routes";
+import webhookRouter from "./routes/webhook.routes";
 
 const IMAGE_GEN_CREDITS = 1;
 const TRAIN_MODEL_CREDITS = 20;
-
-dotenv.config();
 
 const PORT = process.env.PORT || 8080;
 
 const falAiModel = new FalAIModel();
 
 const app = express();
+
+// Configure CORS
 app.use(
   cors({
-    origin: ["https://photo.100xdevs.com", "http://localhost:3000"],
+    origin: [
+      "http://localhost:3000",
+      "http://frontend-service:3000",
+      "http://web:3000",
+      process.env.FRONTEND_URL || "",
+    ].filter(Boolean),
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization"],
+    allowedHeaders: ["Content-Type", "Authorization", "Content-Length", "X-Requested-With"],
   })
 );
-app.use(express.json());
 
-app.get("/pre-signed-url", async (req, res) => {
+// Increase payload size limit
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
+
+app.get("/pre-signed-url", authMiddleware, (req: Request, res: Response) => {
   const key = `models/${Date.now()}_${Math.random()}.zip`;
   const url = S3Client.presign(key, {
     method: "PUT",
@@ -53,13 +61,13 @@ app.get("/pre-signed-url", async (req, res) => {
   });
 });
 
-app.post("/ai/training", authMiddleware, async (req, res) => {
+app.post("/ai/training", authMiddleware, async (req: Request, res: Response) => {
   try {
     const parsedBody = TrainModel.safeParse(req.body);
     if (!parsedBody.success) {
-      res.status(411).json({
-        message: "Input incorrect",
-        error: parsedBody.error,
+      res.status(400).json({
+        message: "Invalid input data",
+        errors: parsedBody.error.errors,
       });
       return;
     }
@@ -88,14 +96,33 @@ app.post("/ai/training", authMiddleware, async (req, res) => {
     });
   } catch (error) {
     console.error("Error in /ai/training:", error);
-    res.status(500).json({
-      message: "Training failed",
-      error: error instanceof Error ? error.message : "Unknown error",
-    });
+    
+    if (error instanceof Error) {
+      if (error.message.includes("falAi")) {
+        res.status(503).json({
+          message: "AI service temporarily unavailable",
+          error: process.env.NODE_ENV === "development" ? error.message : undefined,
+        });
+      } else if (error.message.includes("database")) {
+        res.status(503).json({
+          message: "Database service temporarily unavailable",
+          error: process.env.NODE_ENV === "development" ? error.message : undefined,
+        });
+      } else {
+        res.status(500).json({
+          message: "Training failed",
+          error: process.env.NODE_ENV === "development" ? error.message : undefined,
+        });
+      }
+    } else {
+      res.status(500).json({
+        message: "An unexpected error occurred",
+      });
+    }
   }
 });
 
-app.post("/ai/generate", authMiddleware, async (req, res) => {
+app.post("/ai/generate", authMiddleware, async (req: Request, res: Response) => {
   const parsedBody = GenerateImage.safeParse(req.body);
 
   if (!parsedBody.success) {
@@ -158,7 +185,7 @@ app.post("/ai/generate", authMiddleware, async (req, res) => {
   });
 });
 
-app.post("/pack/generate", authMiddleware, async (req, res) => {
+app.post("/pack/generate", authMiddleware, async (req: Request, res: Response) => {
   const parsedBody = GenerateImagesFromPack.safeParse(req.body);
 
   if (!parsedBody.success) {
@@ -202,13 +229,13 @@ app.post("/pack/generate", authMiddleware, async (req, res) => {
   }
 
   let requestIds: { request_id: string }[] = await Promise.all(
-    prompts.map((prompt) =>
+    prompts.map((prompt: { prompt: string }) =>
       falAiModel.generateImage(prompt.prompt, model.tensorPath!)
     )
   );
 
   const images = await prismaClient.outputImages.createManyAndReturn({
-    data: prompts.map((prompt, index) => ({
+    data: prompts.map((prompt: { prompt: string }, index: number) => ({
       prompt: prompt.prompt,
       userId: req.userId!,
       modelId: parsedBody.data.modelId,
@@ -227,11 +254,11 @@ app.post("/pack/generate", authMiddleware, async (req, res) => {
   });
 
   res.json({
-    images: images.map((image) => image.id),
+    images: images.map((image: { id: string }) => image.id),
   });
 });
 
-app.get("/pack/bulk", async (req, res) => {
+app.get("/pack/bulk", async (req: Request, res: Response) => {
   const packs = await prismaClient.packs.findMany({});
 
   res.json({
@@ -239,7 +266,7 @@ app.get("/pack/bulk", async (req, res) => {
   });
 });
 
-app.get("/image/bulk", authMiddleware, async (req, res) => {
+app.get("/image/bulk", authMiddleware, async (req: Request, res: Response) => {
   const ids = req.query.ids as string[];
   const limit = (req.query.limit as string) ?? "100";
   const offset = (req.query.offset as string) ?? "0";
@@ -264,7 +291,7 @@ app.get("/image/bulk", authMiddleware, async (req, res) => {
   });
 });
 
-app.get("/models", authMiddleware, async (req, res) => {
+app.get("/models", authMiddleware, async (req: Request, res: Response) => {
   const models = await prismaClient.model.findMany({
     where: {
       OR: [{ userId: req.userId }, { open: true }],
@@ -276,7 +303,7 @@ app.get("/models", authMiddleware, async (req, res) => {
   });
 });
 
-app.post("/fal-ai/webhook/train", async (req, res) => {
+app.post("/fal-ai/webhook/train", async (req: Request, res: Response) => {
   console.log("====================Received training webhook====================");
   console.log("Received training webhook:", req.body);
   const requestId = req.body.request_id as string;
@@ -406,7 +433,7 @@ app.post("/fal-ai/webhook/train", async (req, res) => {
   });
 });
 
-app.post("/fal-ai/webhook/image", async (req, res) => {
+app.post("/fal-ai/webhook/image", async (req: Request, res: Response) => {
   console.log("fal-ai/webhook/image");
   console.log(req.body);
   // update the status of the image in the DB
@@ -414,7 +441,7 @@ app.post("/fal-ai/webhook/image", async (req, res) => {
 
   if (req.body.status === "ERROR") {
     res.status(411).json({});
-    prismaClient.outputImages.updateMany({
+    await prismaClient.outputImages.updateMany({
       where: {
         falAiRequestId: requestId,
       },
@@ -441,7 +468,7 @@ app.post("/fal-ai/webhook/image", async (req, res) => {
   });
 });
 
-app.get("/model/status/:modelId", authMiddleware, async (req, res) => {
+app.get("/model/status/:modelId", authMiddleware, async (req: Request, res: Response) => {
   try {
     const modelId = req.params.modelId;
 
@@ -472,14 +499,12 @@ app.get("/model/status/:modelId", authMiddleware, async (req, res) => {
         updatedAt: model.updatedAt,
       },
     });
-    return;
   } catch (error) {
     console.error("Error checking model status:", error);
     res.status(500).json({
       success: false,
       message: "Failed to check model status",
     });
-    return;
   }
 });
 

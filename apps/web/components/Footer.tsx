@@ -21,7 +21,7 @@ export function Footer() {
               >
                 <path d="M15 6v12a3 3 0 1 0 3-3H6a3 3 0 1 0 3 3V6a3 3 0 1 0-3 3h12a3 3 0 1 0-3-3" />
               </svg>
-              <span className="font-bold font-mono text-xl">100xPhoto</span>
+              <span className="font-bold font-mono text-xl">PixelForge</span>
             </div>
 
             <p className="mt-4 max-w-sm text-muted-foreground">

@@ -6,9 +6,13 @@ import axios from "axios";
 import { useEffect, useState } from "react";
 import { ImageCard } from "./ImageCard";
 import { motion } from "framer-motion";
-import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
-import { Button } from "./ui/button";
-import { Download, ChevronLeft, ChevronRight } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Download, ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
 import Image from "next/image";
 
 export interface TImage {
@@ -30,6 +34,7 @@ export function Camera() {
   const [currentImageIndex, setCurrentImageIndex] = useState<number>(0);
   const [isDownloading, setIsDownloading] = useState(false);
   const { getToken } = useAuth();
+  const [error, setError] = useState<string | null>(null);
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleString("en-US", {
@@ -44,13 +49,25 @@ export function Camera() {
   const fetchImages = async () => {
     try {
       const token = await getToken();
+      if (!token) {
+        setError("Authentication required");
+        setImagesLoading(false);
+        return;
+      }
+
       const response = await axios.get(`${BACKEND_URL}/image/bulk`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       setImages(response.data.images);
-      setImagesLoading(false);
+      setError(null);
     } catch (error) {
       console.error("Failed to fetch images:", error);
+      if (axios.isAxiosError(error)) {
+        setError(error.response?.data?.message || "Failed to fetch images");
+      } else {
+        setError("An unexpected error occurred");
+      }
+    } finally {
       setImagesLoading(false);
     }
   };
@@ -65,11 +82,18 @@ export function Camera() {
   };
 
   const handleDownload = async (imageUrl: string, imageName: string) => {
-    if (!imageUrl) return;
+    if (!imageUrl) {
+      setError("No image URL provided");
+      return;
+    }
 
     try {
       setIsDownloading(true);
+      setError(null);
       const response = await fetch(imageUrl);
+      if (!response.ok) {
+        throw new Error(`Failed to download image: ${response.statusText}`);
+      }
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
@@ -81,6 +105,7 @@ export function Camera() {
       document.body.removeChild(a);
     } catch (error) {
       console.error("Error downloading image:", error);
+      setError(error instanceof Error ? error.message : "Failed to download image");
     } finally {
       setIsDownloading(false);
     }
@@ -97,6 +122,16 @@ export function Camera() {
 
   return (
     <div className="space-y-4">
+      {error && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-destructive/10 border border-destructive text-destructive px-4 py-2 rounded-lg"
+        >
+          {error}
+        </motion.div>
+      )}
+
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-semibold">Your Gallery</h2>
         <span className="text-xs select-none bg-secondary/40 font-semibold border border-secondary text-muted-foreground px-2 py-1 rounded-full">
@@ -154,9 +189,14 @@ export function Camera() {
       {selectedImage && (
         <Dialog
           open={!!selectedImage}
-          onOpenChange={(open) => !open && setSelectedImage(null)}
+          onOpenChange={(open) => {
+            if (!open) {
+              setSelectedImage(null);
+              setError(null);
+            }
+          }}
         >
-          <DialogContent className="max-w-5xl p-10 overflow-hidden bg-black/90 backdrop-blur-xl">
+          <DialogContent className="max-w-5xl p-10 overflow-hidden bg-black/90 backdrop-blur-xl" onOpenAutoFocus={(e) => e.preventDefault()}>
             <DialogTitle className="sr-only">Image Preview</DialogTitle>
             <motion.div
               initial={{ opacity: 0 }}
@@ -165,6 +205,12 @@ export function Camera() {
               transition={{ duration: 0.2 }}
               className="relative w-full h-full flex flex-col items-center justify-center"
             >
+              {error && (
+                <div className="absolute top-4 left-4 right-4 bg-destructive/10 border border-destructive text-destructive px-4 py-2 rounded-lg">
+                  {error}
+                </div>
+              )}
+
               <div className="absolute top-4 left-4 right-4 text-white">
                 <p className="text-lg font-medium truncate">
                   {selectedImage?.prompt}
@@ -196,8 +242,17 @@ export function Camera() {
                   disabled={isDownloading || !selectedImage.imageUrl}
                   className="relative z-10 hover:cursor-pointer"
                 >
-                  <Download className="h-4 w-4 mr-2" />
-                  Download Image
+                  {isDownloading ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Downloading...
+                    </>
+                  ) : (
+                    <>
+                      <Download className="h-4 w-4 mr-2" />
+                      Download Image
+                    </>
+                  )}
                 </Button>
               </div>
 

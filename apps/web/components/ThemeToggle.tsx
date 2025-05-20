@@ -3,9 +3,21 @@
 import { useTheme } from "next-themes";
 import { Switch } from "@/components/ui/switch";
 import { Sun, Moon } from "lucide-react";
+import { useEffect, useState } from "react";
 
 export function ThemeToggle() {
   const { theme, setTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+
+  // Only show the theme toggle after mounting to avoid hydration mismatch
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted) {
+    return null;
+  }
+
   const isDark = theme === "dark";
 
   return (

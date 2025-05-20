@@ -9,7 +9,6 @@ The Next.js frontend application for PhotoAI - an AI-powered image generation pl
 - Beautiful Image Gallery
 - Responsive Design
 - Authentication with Clerk
-- Secure Payment Integration with Stripe
 
 ## Tech Stack
 
@@ -18,7 +17,6 @@ The Next.js frontend application for PhotoAI - an AI-powered image generation pl
 - Tailwind CSS
 - Shadcn/UI
 - Clerk Authentication
-- Stripe/Razorpay Payments
 
 ## Getting Started
 
@@ -26,7 +24,6 @@ The Next.js frontend application for PhotoAI - an AI-powered image generation pl
 
 - Node.js 18+ or Bun
 - Clerk Account
-- Stripe Account (for payments)
 
 ### Environment Variables
 
@@ -36,7 +33,6 @@ Create a `.env.local` file:
 NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=your_publishable_key
 CLERK_SECRET_KEY=your_secret_key
 NEXT_PUBLIC_BACKEND_URL=http://localhost:8080
-NEXT_PUBLIC_STRIPE_KEY=your_stripe_key
 ```
 
 ### Development
@@ -92,7 +88,6 @@ docker run -p 3000:3000 \
   -e NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=your_key \
   -e CLERK_SECRET_KEY=your_secret_key \
   -e NEXT_PUBLIC_BACKEND_URL=http://localhost:8080 \
-  -e NEXT_PUBLIC_STRIPE_KEY=your_stripe_key \
   photoai-frontend
 ```
 

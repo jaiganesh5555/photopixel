@@ -22,7 +22,7 @@ import { Switch } from "@/components/ui/switch";
 import { UploadModal } from "@/components/ui/upload";
 import { useEffect, useState } from "react";
 import axios from "axios";
-import { BACKEND_URL, CLOUDFLARE_URL } from "@/app/config";
+import { BACKEND_URL, getBackendUrl, CLOUDFLARE_URL } from "@/app/config";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@clerk/nextjs";
 import toast from "react-hot-toast";
@@ -144,7 +144,7 @@ export function Train() {
       const token = await getToken();
       setModelTraining(true);
 
-      const response = await axios.post(`${BACKEND_URL}/ai/training`, input, {
+      const response = await axios.post(`${getBackendUrl()}/ai/training`, input, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
@@ -189,9 +189,69 @@ export function Train() {
     setPreviewFiles(files);
 
     try {
-      const res = await axios.get(`${BACKEND_URL}/pre-signed-url`);
+      // Get auth token first
+      const token = await getToken();
+      if (!token) {
+        throw new Error("Not authenticated");
+      }
+
+      const backendUrl = getBackendUrl();
+      console.log("Local Development Debug:");
+      console.log("1. Backend URL:", backendUrl);
+      console.log("2. Auth token:", token.substring(0, 10) + "...");
+      console.log("3. Number of files:", files.length);
+      console.log("4. Total size:", files.reduce((acc, file) => acc + file.size, 0), "bytes");
+
+      // Get pre-signed URL with detailed error handling
+      let res;
+      try {
+        console.log("5. Requesting pre-signed URL from:", `${backendUrl}/pre-signed-url`);
+        res = await axios.get(`${backendUrl}/pre-signed-url`, {
+          headers: { 
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          timeout: 10000, // 10 second timeout
+          validateStatus: (status) => status < 500
+        });
+        
+        console.log("6. Pre-signed URL response:", {
+          status: res.status,
+          statusText: res.statusText,
+          data: res.data
+        });
+
+        if (res.status !== 200) {
+          throw new Error(`Server returned ${res.status}: ${res.statusText}`);
+        }
+      } catch (error) {
+        if (axios.isAxiosError(error)) {
+          console.error("7. Pre-signed URL request failed:", {
+            message: error.message,
+            code: error.code,
+            response: error.response ? {
+              status: error.response.status,
+              statusText: error.response.statusText,
+              data: error.response.data
+            } : 'No response',
+            request: error.request ? 'Request was made but no response received' : 'No request was made'
+          });
+
+          if (error.code === 'ERR_NETWORK') {
+            throw new Error("Network error: Cannot connect to the server. Please ensure the backend is running on port 8080.");
+          }
+          throw new Error(`Failed to get pre-signed URL: ${error.message}`);
+        }
+        throw error;
+      }
+      
+      if (!res.data?.url || !res.data?.key) {
+        throw new Error("Invalid response from server: missing url or key");
+      }
+
       const { url, key } = res.data;
 
+      // Create zip file
       const zip = new JSZip();
       const fileNames: string[] = [];
 
@@ -202,26 +262,50 @@ export function Train() {
       }
 
       const content = await zip.generateAsync({ type: "blob" });
+      console.log("Generated zip file size:", content.size);
 
-      await axios.put(url, content, {
-        headers: {
+      // Upload to R2 with detailed error handling
+      try {
+        console.log("Uploading to R2 URL:", url);
+        console.log("Request headers:", {
           "Content-Type": "application/zip",
+          "Content-Length": content.size
+        });
+
+        const uploadResponse = await axios.put(url, content, {
+          headers: {
+            "Content-Type": "application/zip",
+            "Content-Length": content.size.toString()
         },
         onUploadProgress: (progressEvent) => {
-          setUploadProgress(
-            50 + Math.round((progressEvent.loaded * 50) / progressEvent.total!)
-          );
-        },
-      });
+            if (progressEvent.total) {
+              const progress = 50 + Math.round((progressEvent.loaded * 50) / progressEvent.total);
+              console.log("Upload progress:", progress + "%");
+              setUploadProgress(progress);
+            }
+          },
+          timeout: 30000, // 30 second timeout for upload
+          validateStatus: (status) => status < 500,
+          maxContentLength: Infinity,
+          maxBodyLength: Infinity
+        });
 
-      const fullZipUrl = `${CLOUDFLARE_URL}/${key}`;
+        console.log("Upload response:", {
+          status: uploadResponse.status,
+          statusText: uploadResponse.statusText,
+          headers: uploadResponse.headers
+        });
+
+        // Use the same R2 URL format as the upload URL
+        const fullZipUrl = `${process.env.NEXT_PUBLIC_R2_URL || 'https://a8ec3fab43eb1d9dfe4ff82a6a400aec.r2.cloudflarestorage.com'}/${key}`;
+        console.log("Setting zip URL to:", fullZipUrl);
       setZipUrl(fullZipUrl);
       setZipKey(key);
 
       setUploadedFiles((prev) => [
         ...prev,
-        ...fileNames.map((name) => ({
-          name,
+          ...files.map((file) => ({
+            name: file.name,
           status: "uploaded" as const,
           timestamp: new Date(),
         })),
@@ -229,8 +313,52 @@ export function Train() {
 
       toast.success("Images uploaded successfully!");
     } catch (error) {
-      console.error("Upload failed:", error);
-      toast.error("Failed to upload images. Please try again.");
+        if (axios.isAxiosError(error)) {
+          console.error("R2 upload error details:", {
+            message: error.message,
+            code: error.code,
+            response: error.response ? {
+              status: error.response.status,
+              statusText: error.response.statusText,
+              data: error.response.data,
+              headers: error.response.headers
+            } : 'No response',
+            request: error.request ? {
+              method: error.request.method,
+              url: error.request.url,
+              headers: error.request.headers
+            } : 'No request was made',
+            config: {
+              url: error.config?.url,
+              method: error.config?.method,
+              headers: error.config?.headers,
+              timeout: error.config?.timeout,
+              maxContentLength: error.config?.maxContentLength,
+              maxBodyLength: error.config?.maxBodyLength
+            }
+          });
+
+          if (error.code === 'ERR_NETWORK') {
+            throw new Error("Network error: Cannot connect to R2. Please check your internet connection and try again.");
+          } else if (error.code === 'ECONNABORTED') {
+            throw new Error("Upload timed out. Please try again with a smaller file or better internet connection.");
+          } else if (error.response?.status === 403) {
+            throw new Error("Access denied to R2. The pre-signed URL may have expired.");
+          }
+          throw new Error(`Failed to upload to R2: ${error.message}`);
+        }
+        throw error;
+      }
+    } catch (error) {
+      console.error("Upload error:", error);
+      toast.error(
+        error instanceof Error 
+          ? error.message 
+          : "Failed to upload images. Please try again."
+      );
+      setZipUrl("");
+      setZipKey("");
+      setUploadedFiles([]);
     } finally {
       setIsUploading(false);
       setUploadProgress(0);

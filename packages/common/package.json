@@ -7,12 +7,14 @@
     "./inferred": "./inferred-types.ts"
   },
   "devDependencies": {
-    "@types/bun": "latest"
+    "@types/bun": "latest",
+    "prisma": "^6.8.2"
   },
   "peerDependencies": {
     "typescript": "^5.0.0"
   },
   "dependencies": {
+    "@neondatabase/serverless": "^1.0.0",
     "zod": "^3.24.1"
   }
 }

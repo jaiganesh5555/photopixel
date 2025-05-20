@@ -1,12 +1,10 @@
 import { useState } from "react";
-import { loadStripe } from "@stripe/stripe-js";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
 import { BACKEND_URL } from "@/app/config";
 import { RazorpayResponse } from "@/types";
 
-const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_KEY!);
 const apiUrl = BACKEND_URL;
 
 // Create an event bus for credit updates
@@ -17,19 +15,19 @@ export function usePayment() {
   const { toast } = useToast();
   const { getToken } = useAuth();
 
-  const handlePayment = async (plan: "basic" | "premium", p0: boolean, p1: string) => {
+  const handlePayment = async (plan: "basic" | "premium") => {
     try {
       setIsLoading(true);
       const token = await getToken();
       if (!token) throw new Error("Not authenticated");
 
-      const response = await fetch(`${apiUrl}/payment/create`, {
+      const response = await fetch(`${apiUrl}/payment/create-order`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ plan, method: "razorpay" }),
+        body: JSON.stringify({ plan }),
       });
 
       const data = await response.json();
@@ -68,6 +66,7 @@ export function usePayment() {
       const razorpay = new (window as any).Razorpay(options);
       razorpay.open();
     } catch (error) {
+      console.error("Payment error:", error);
       toast({
         title: "Payment Error",
         description: "Failed to initialize payment",

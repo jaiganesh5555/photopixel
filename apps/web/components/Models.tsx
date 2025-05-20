@@ -5,9 +5,9 @@ import axios from "axios";
 import { BACKEND_URL } from "@/app/config";
 import Image from "next/image";
 import { motion } from "framer-motion";
-import { Card } from "./ui/card";
-import { Badge } from "./ui/badge";
-import { Sparkles, Loader2 } from "lucide-react";
+import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Sparkles, Loader2, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface TModel {
@@ -25,21 +25,51 @@ export function SelectModel({
   selectedModel?: string;
 }) {
   const { getToken } = useAuth();
-  const [modelLoading, setModalLoading] = useState(false);
+  const [modelLoading, setModalLoading] = useState(true);
   const [models, setModels] = useState<TModel[]>([]);
+  const [error, setError] = useState<string | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
+  const MAX_RETRIES = 3;
 
-  useEffect(() => {
-    (async () => {
+  const fetchModels = async () => {
+    try {
+      setError(null);
       const token = await getToken();
+      if (!token) {
+        throw new Error("Authentication required");
+      }
+
       const response = await axios.get(`${BACKEND_URL}/models`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
       });
       setModels(response.data.models);
-      setSelectedModel(response.data.models[0]?.id);
+      if (response.data.models.length > 0 && !selectedModel) {
+        setSelectedModel(response.data.models[0]?.id);
+      }
+    } catch (error) {
+      console.error("Failed to fetch models:", error);
+      if (axios.isAxiosError(error)) {
+        setError(error.response?.data?.message || "Failed to fetch models");
+      } else {
+        setError("An unexpected error occurred");
+      }
+      if (retryCount < MAX_RETRIES) {
+        setRetryCount(prev => prev + 1);
+        setTimeout(fetchModels, 1000 * Math.pow(2, retryCount)); // Exponential backoff
+      }
+    } finally {
       setModalLoading(false);
-    })();
+    }
+  };
+
+  useEffect(() => {
+    fetchModels();
+    return () => {
+      setModalLoading(false);
+      setError(null);
+    };
   }, []);
 
   const container = {
@@ -59,6 +89,28 @@ export function SelectModel({
 
   return (
     <div className="space-y-6">
+      {error && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-destructive/10 border border-destructive text-destructive px-4 py-2 rounded-lg flex items-center gap-2"
+        >
+          <AlertCircle className="h-4 w-4" />
+          {error}
+          {retryCount < MAX_RETRIES && (
+            <button
+              onClick={() => {
+                setRetryCount(0);
+                fetchModels();
+              }}
+              className="text-sm underline hover:no-underline"
+            >
+              Retry
+            </button>
+          )}
+        </motion.div>
+      )}
+
       <div className="flex items-center justify-between">
         <div className="md:space-y-1">
           <h2 className="md:text-2xl text-xl font-semibold tracking-tight">
@@ -106,6 +158,10 @@ export function SelectModel({
                       alt={`Thumbnail for ${model.name}`}
                       fill
                       className="object-cover transition-transform duration-300 group-hover:scale-105"
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        target.src = "/placeholder-image.jpg";
+                      }}
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
                     <div className="absolute bottom-0 left-0 right-0 p-4">
@@ -122,7 +178,7 @@ export function SelectModel({
         </motion.div>
       )}
 
-      {!modelLoading && models.length === 0 && (
+      {!modelLoading && models.length === 0 && !error && (
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
