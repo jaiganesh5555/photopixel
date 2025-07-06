@@ -8,15 +8,18 @@ export type PlanType = "basic" | "premium";
 const RAZORPAY_KEY_ID = process.env.RAZORPAY_KEY_ID;
 const RAZORPAY_KEY_SECRET = process.env.RAZORPAY_KEY_SECRET;
 
+// Log warning instead of throwing error immediately
 if (!RAZORPAY_KEY_ID || !RAZORPAY_KEY_SECRET) {
-  throw new Error("Razorpay credentials are not configured");
+  console.warn("⚠️  Razorpay credentials are not configured. Payment features will be disabled.");
 }
 
-// Initialize Razorpay
-const razorpay = new Razorpay({
-  key_id: RAZORPAY_KEY_ID,
-  key_secret: RAZORPAY_KEY_SECRET,
-});
+// Initialize Razorpay only if credentials are available
+const razorpay = RAZORPAY_KEY_ID && RAZORPAY_KEY_SECRET 
+  ? new Razorpay({
+      key_id: RAZORPAY_KEY_ID,
+      key_secret: RAZORPAY_KEY_SECRET,
+    })
+  : null;
 
 // Define plan prices (in rupees)
 const PLAN_PRICES = {
@@ -64,6 +67,10 @@ export async function createRazorpayOrder(
   plan: keyof typeof PLAN_PRICES
 ) {
   try {
+    if (!razorpay) {
+      throw new Error("Razorpay is not configured. Please set RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET environment variables.");
+    }
+
     const amount = PLAN_PRICES[plan];
     const amountInPaise = amount * 100;
 
@@ -133,6 +140,10 @@ export const verifyRazorpaySignature = async ({
   plan: PlanType;
 }) => {
   try {
+    if (!razorpay) {
+      throw new Error("Razorpay is not configured. Please set RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET environment variables.");
+    }
+
     if (!RAZORPAY_KEY_SECRET) {
       throw new Error("Razorpay secret key not configured");
     }
@@ -232,29 +243,27 @@ export async function createSubscriptionRecord(
   isAnnual: boolean = false
 ) {
   try {
-    return await withRetry(() =>
-      prismaClient.$transaction(async (prisma: typeof prismaClient) => {
-        console.log("Creating subscription:", {
+    return await withRetry(async () => {
+      console.log("Creating subscription:", {
+        userId,
+        plan,
+        paymentId,
+        orderId,
+        isAnnual,
+      });
+
+      const subscription = await prismaClient.subscription.create({
+        data: {
           userId,
           plan,
           paymentId,
           orderId,
-          isAnnual,
-        });
+        },
+      });
 
-        const subscription = await prisma.subscription.create({
-          data: {
-            userId,
-            plan,
-            paymentId,
-            orderId,
-          },
-        });
-
-        await addCreditsForPlan(userId, plan);
-        return subscription;
-      })
-    );
+      await addCreditsForPlan(userId, plan);
+      return subscription;
+    });
   } catch (error) {
     console.error("Subscription creation error:", error);
     throw error;
