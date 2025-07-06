@@ -1,34 +1,22 @@
 {
   "compilerOptions": {
-    // Enable latest features
-    "lib": ["ESNext", "DOM"],
     "target": "ESNext",
     "module": "ESNext",
-    "moduleDetection": "force",
-    "jsx": "react-jsx",
-    "allowJs": true,
-
-    // Bundler mode
-    "moduleResolution": "bundler",
-    "allowImportingTsExtensions": true,
-    "verbatimModuleSyntax": true,
-    "noEmit": true,
-
-    // Best practices
+    "moduleResolution": "node",
+    "esModuleInterop": true,
     "strict": true,
     "skipLibCheck": true,
-    "noFallthroughCasesInSwitch": true,
-
-    // Some stricter flags (disabled by default)
-    "noUnusedLocals": false,
-    "noUnusedParameters": false,
-    "noPropertyAccessFromIndexSignature": false,
-
-    // Add path mappings for workspace packages
-    "baseUrl": "../..",
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "noEmit": true,
+    "jsx": "preserve",
+    "types": ["bun-types"],
     "paths": {
-      "common/*": ["packages/common/*"],
-      "db/*": ["packages/db/*"]
+      "common/*": ["../../packages/common/*"],
+      "db/*": ["../../packages/db/*"]
     }
-  }
+  },
+  "include": ["./**/*.ts"],
+  "exclude": ["node_modules"]
 }

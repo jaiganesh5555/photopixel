@@ -8,6 +8,7 @@
         "format": "prettier --write \"**/*.{ts,tsx,md}\"",
         "start:web": "cd ./apps/web && npm run start",
         "start:backend": "cd ./apps/backend && npm run start",
+        "dev:backend": "cd ./apps/backend && npx ts-node index.ts",
         "generate:db": "cd ./packages/db && npx prisma generate && cd ../.."
     },
     "devDependencies": {

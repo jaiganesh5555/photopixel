@@ -1,16 +1,18 @@
 import { fal } from "@fal-ai/client";
-import express from "express";
-import type { Request, Response, NextFunction } from "express";
+import express, { Request, Response } from "express";
+import type { NextFunction } from "express";
 import {
   TrainModel,
   GenerateImage,
   GenerateImagesFromPack,
 } from "common/types";
 import { prismaClient } from "db";
-import { S3Client } from "bun";
+import { S3Client, PutObjectCommand, GetObjectCommand } from "@aws-sdk/client-s3";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { FalAIModel } from "./models/FalAIModel";
 import cors from "cors";
 import { authMiddleware } from "./middleware";
+import { v4 as uuidv4 } from 'uuid';
 
 import paymentRoutes from "./routes/payment.routes";
 import webhookRouter from "./routes/webhook.routes";
@@ -18,7 +20,22 @@ import webhookRouter from "./routes/webhook.routes";
 const IMAGE_GEN_CREDITS = 1;
 const TRAIN_MODEL_CREDITS = 20;
 
-const PORT = process.env.PORT || 8080;
+const PORT = parseInt(process.env.PORT || '8080', 10);
+const ALTERNATIVE_PORTS = [8081, 8082, 8083, 8084, 8085];
+
+// R2 Configuration
+const r2Client = new S3Client({
+  region: "auto",
+  endpoint: process.env.ENDPOINT,
+  credentials: {
+    accessKeyId: process.env.S3_ACCESS_KEY!,
+    secretAccessKey: process.env.S3_SECRET_KEY!,
+  },
+  forcePathStyle: true,
+});
+
+const R2_BUCKET = process.env.BUCKET_NAME;
+const R2_PUBLIC_URL = process.env.CLOUDFLARE_URL;
 
 const falAiModel = new FalAIModel();
 
@@ -43,22 +60,52 @@ app.use(
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
-app.get("/pre-signed-url", authMiddleware, (req: Request, res: Response) => {
-  const key = `models/${Date.now()}_${Math.random()}.zip`;
-  const url = S3Client.presign(key, {
-    method: "PUT",
-    accessKeyId: process.env.S3_ACCESS_KEY,
-    secretAccessKey: process.env.S3_SECRET_KEY,
-    endpoint: process.env.ENDPOINT,
-    bucket: process.env.BUCKET_NAME,
-    expiresIn: 60 * 5,
-    type: "application/zip",
-  });
+// Generate presigned URL for ZIP upload
+app.get("/pre-signed-url", authMiddleware, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const fileId = uuidv4();
+    const key = `models/${fileId}.zip`;
+    
+    const command = new PutObjectCommand({
+      Bucket: R2_BUCKET,
+      Key: key,
+      ContentType: 'application/zip',
+    });
 
-  res.json({
-    url,
-    key,
-  });
+    const url = await getSignedUrl(r2Client, command, { expiresIn: 3600 });
+    
+    res.json({
+      url,
+      key,
+      publicUrl: `${R2_PUBLIC_URL}/${key}`
+    });
+  } catch (error) {
+    console.error('Error generating upload URL:', error);
+    res.status(500).json({ error: 'Failed to generate upload URL' });
+  }
+});
+
+// Generate download URL
+app.get("/download-url", authMiddleware, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { key } = req.query;
+    
+    if (!key || typeof key !== 'string') {
+      res.status(400).json({ error: 'Key parameter is required and must be a string' });
+      return;
+    }
+
+    const command = new GetObjectCommand({
+      Bucket: R2_BUCKET,
+      Key: key,
+    });
+
+    const url = await getSignedUrl(r2Client, command, { expiresIn: 3600 });
+    res.json({ url });
+  } catch (error) {
+    console.error('Error generating download URL:', error);
+    res.status(500).json({ error: 'Failed to generate download URL' });
+  }
 });
 
 app.post("/ai/training", authMiddleware, async (req: Request, res: Response) => {
@@ -511,6 +558,22 @@ app.get("/model/status/:modelId", authMiddleware, async (req: Request, res: Resp
 app.use("/payment", paymentRoutes);
 app.use("/api/webhook", webhookRouter);
 
-app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
-});
+// Start server with port fallback
+const startServer = async (port: number, alternativePorts: number[] = []): Promise<void> => {
+  try {
+    app.listen(port, () => {
+      console.log(`Server running on port ${port}`);
+    });
+  } catch (error) {
+    if (alternativePorts.length > 0) {
+      const nextPort = alternativePorts[0];
+      console.log(`Port ${port} is in use, trying port ${nextPort}...`);
+      await startServer(nextPort, alternativePorts.slice(1));
+    } else {
+      console.error('Failed to start server. All ports are in use.');
+      process.exit(1);
+    }
+  }
+};
+
+startServer(PORT, ALTERNATIVE_PORTS);

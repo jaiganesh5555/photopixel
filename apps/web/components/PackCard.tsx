@@ -45,6 +45,7 @@ export function PackCard(props: TPack & { selectedModelId: string }) {
     props.imageUrl2,
     props.imageUrl3,
     props.imageUrl4,
+    
   ].filter(Boolean); // Remove undefined values
 
   const handleGenerate = async () => {

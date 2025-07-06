@@ -20,7 +20,7 @@ import {
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { UploadModal } from "@/components/ui/upload";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import axios from "axios";
 import { BACKEND_URL, getBackendUrl, CLOUDFLARE_URL } from "@/app/config";
 import { useRouter } from "next/navigation";
@@ -108,6 +108,103 @@ export function Train() {
     return () => clearInterval(interval);
   }, [modelId, getToken, router]);
 
+  const handleRemoveFile = useCallback((indexToRemove: number) => {
+    setUploadedFiles((prev) => {
+      const newFiles = prev.filter((_, index) => index !== indexToRemove);
+      if (newFiles.length === 0) {
+        setZipUrl("");
+        setZipKey("");
+      }
+      return newFiles;
+    });
+  }, []);
+
+  const handleRemoveAll = useCallback(() => {
+    setUploadedFiles([]);
+    setZipUrl("");
+    setZipKey("");
+    setPreviewFiles([]);
+  }, []);
+
+  const handleUpload = useCallback(async (filesToUpload: File[]) => {
+    if (filesToUpload.length > 50) {
+      toast.error("Maximum 50 images allowed");
+      return;
+    }
+
+    setIsUploading(true);
+    setUploadProgress(0);
+    setPreviewFiles(filesToUpload);
+
+    try {
+      // Get auth token
+      const token = await getToken();
+      if (!token) {
+        throw new Error("Not authenticated");
+      }
+
+      // 1. Get presigned URL
+      const { data } = await axios.get(`${getBackendUrl()}/pre-signed-url`, {
+        headers: { 
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      const { url, key, publicUrl } = data;
+
+      // 2. Create ZIP
+      const zip = new JSZip();
+      for (const file of filesToUpload) {
+        zip.file(file.name, await file.arrayBuffer());
+        setUploadProgress((prev) => Math.min(prev + 30 / filesToUpload.length, 30));
+      }
+
+      // 3. Generate ZIP content
+      const content = await zip.generateAsync(
+        { type: 'blob' },
+        metadata => {
+          setUploadProgress(30 + (metadata.percent * 0.4));
+        }
+      );
+
+      // 4. Upload to R2
+      await axios.put(url, content, {
+        headers: {
+          'Content-Type': 'application/zip',
+          'Content-Length': content.size.toString()
+        },
+        onUploadProgress: (e) => {
+          if (e.total) {
+            setUploadProgress(70 + (e.loaded / e.total * 30));
+          }
+        }
+      });
+
+      // 5. Update state
+      setZipUrl(publicUrl);
+      setZipKey(key);
+      setUploadedFiles(filesToUpload.map(file => ({
+        name: file.name,
+        status: "uploaded" as const,
+        timestamp: new Date(),
+      })));
+
+      toast.success("Images uploaded successfully!");
+    } catch (error) {
+      console.error("Upload error:", error);
+      toast.error(
+        error instanceof Error 
+          ? error.message 
+          : "Failed to upload images. Please try again."
+      );
+      handleRemoveAll();
+    } finally {
+      setIsUploading(false);
+      setUploadProgress(0);
+    }
+  }, [getToken, handleRemoveAll]);
+
   async function trainModal() {
     if (credits <= 0) {
       toast.error("You don't have enough credits");
@@ -166,204 +263,6 @@ export function Train() {
       setModelTraining(false);
     }
   }
-
-  const handleRemoveFile = (indexToRemove: number) => {
-    setUploadedFiles((prev) => {
-      const newFiles = prev.filter((_, index) => index !== indexToRemove);
-      if (newFiles.length === 0) {
-        setZipUrl("");
-        setZipKey("");
-      }
-      return newFiles;
-    });
-  };
-
-  const handleUpload = async (files: File[]) => {
-    if (files.length > 50) {
-      toast.error("Maximum 50 images allowed");
-      return;
-    }
-
-    setIsUploading(true);
-    setUploadProgress(0);
-    setPreviewFiles(files);
-
-    try {
-      // Get auth token first
-      const token = await getToken();
-      if (!token) {
-        throw new Error("Not authenticated");
-      }
-
-      const backendUrl = getBackendUrl();
-      console.log("Local Development Debug:");
-      console.log("1. Backend URL:", backendUrl);
-      console.log("2. Auth token:", token.substring(0, 10) + "...");
-      console.log("3. Number of files:", files.length);
-      console.log("4. Total size:", files.reduce((acc, file) => acc + file.size, 0), "bytes");
-
-      // Get pre-signed URL with detailed error handling
-      let res;
-      try {
-        console.log("5. Requesting pre-signed URL from:", `${backendUrl}/pre-signed-url`);
-        res = await axios.get(`${backendUrl}/pre-signed-url`, {
-          headers: { 
-            Authorization: `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          },
-          timeout: 10000, // 10 second timeout
-          validateStatus: (status) => status < 500
-        });
-        
-        console.log("6. Pre-signed URL response:", {
-          status: res.status,
-          statusText: res.statusText,
-          data: res.data
-        });
-
-        if (res.status !== 200) {
-          throw new Error(`Server returned ${res.status}: ${res.statusText}`);
-        }
-      } catch (error) {
-        if (axios.isAxiosError(error)) {
-          console.error("7. Pre-signed URL request failed:", {
-            message: error.message,
-            code: error.code,
-            response: error.response ? {
-              status: error.response.status,
-              statusText: error.response.statusText,
-              data: error.response.data
-            } : 'No response',
-            request: error.request ? 'Request was made but no response received' : 'No request was made'
-          });
-
-          if (error.code === 'ERR_NETWORK') {
-            throw new Error("Network error: Cannot connect to the server. Please ensure the backend is running on port 8080.");
-          }
-          throw new Error(`Failed to get pre-signed URL: ${error.message}`);
-        }
-        throw error;
-      }
-      
-      if (!res.data?.url || !res.data?.key) {
-        throw new Error("Invalid response from server: missing url or key");
-      }
-
-      const { url, key } = res.data;
-
-      // Create zip file
-      const zip = new JSZip();
-      const fileNames: string[] = [];
-
-      for (const file of files) {
-        zip.file(file.name, await file.arrayBuffer());
-        fileNames.push(file.name);
-        setUploadProgress((prev) => Math.min(prev + 50 / files.length, 50));
-      }
-
-      const content = await zip.generateAsync({ type: "blob" });
-      console.log("Generated zip file size:", content.size);
-
-      // Upload to R2 with detailed error handling
-      try {
-        console.log("Uploading to R2 URL:", url);
-        console.log("Request headers:", {
-          "Content-Type": "application/zip",
-          "Content-Length": content.size
-        });
-
-        const uploadResponse = await axios.put(url, content, {
-          headers: {
-            "Content-Type": "application/zip",
-            "Content-Length": content.size.toString()
-        },
-        onUploadProgress: (progressEvent) => {
-            if (progressEvent.total) {
-              const progress = 50 + Math.round((progressEvent.loaded * 50) / progressEvent.total);
-              console.log("Upload progress:", progress + "%");
-              setUploadProgress(progress);
-            }
-          },
-          timeout: 30000, // 30 second timeout for upload
-          validateStatus: (status) => status < 500,
-          maxContentLength: Infinity,
-          maxBodyLength: Infinity
-        });
-
-        console.log("Upload response:", {
-          status: uploadResponse.status,
-          statusText: uploadResponse.statusText,
-          headers: uploadResponse.headers
-        });
-
-        // Use the same R2 URL format as the upload URL
-        const fullZipUrl = `${process.env.NEXT_PUBLIC_R2_URL || 'https://a8ec3fab43eb1d9dfe4ff82a6a400aec.r2.cloudflarestorage.com'}/${key}`;
-        console.log("Setting zip URL to:", fullZipUrl);
-      setZipUrl(fullZipUrl);
-      setZipKey(key);
-
-      setUploadedFiles((prev) => [
-        ...prev,
-          ...files.map((file) => ({
-            name: file.name,
-          status: "uploaded" as const,
-          timestamp: new Date(),
-        })),
-      ]);
-
-      toast.success("Images uploaded successfully!");
-    } catch (error) {
-        if (axios.isAxiosError(error)) {
-          console.error("R2 upload error details:", {
-            message: error.message,
-            code: error.code,
-            response: error.response ? {
-              status: error.response.status,
-              statusText: error.response.statusText,
-              data: error.response.data,
-              headers: error.response.headers
-            } : 'No response',
-            request: error.request ? {
-              method: error.request.method,
-              url: error.request.url,
-              headers: error.request.headers
-            } : 'No request was made',
-            config: {
-              url: error.config?.url,
-              method: error.config?.method,
-              headers: error.config?.headers,
-              timeout: error.config?.timeout,
-              maxContentLength: error.config?.maxContentLength,
-              maxBodyLength: error.config?.maxBodyLength
-            }
-          });
-
-          if (error.code === 'ERR_NETWORK') {
-            throw new Error("Network error: Cannot connect to R2. Please check your internet connection and try again.");
-          } else if (error.code === 'ECONNABORTED') {
-            throw new Error("Upload timed out. Please try again with a smaller file or better internet connection.");
-          } else if (error.response?.status === 403) {
-            throw new Error("Access denied to R2. The pre-signed URL may have expired.");
-          }
-          throw new Error(`Failed to upload to R2: ${error.message}`);
-        }
-        throw error;
-      }
-    } catch (error) {
-      console.error("Upload error:", error);
-      toast.error(
-        error instanceof Error 
-          ? error.message 
-          : "Failed to upload images. Please try again."
-      );
-      setZipUrl("");
-      setZipKey("");
-      setUploadedFiles([]);
-    } finally {
-      setIsUploading(false);
-      setUploadProgress(0);
-    }
-  };
 
   const isFormValid = name && zipUrl && type && age && ethinicity && eyeColor;
 
@@ -516,11 +415,7 @@ export function Train() {
                           </p>
                           {uploadedFiles.length > 1 && (
                             <button
-                              onClick={() => {
-                                setUploadedFiles([]);
-                                setZipUrl("");
-                                setZipKey("");
-                              }}
+                              onClick={handleRemoveAll}
                               className="text-xs text-red-500 cursor-pointer bg-red-500/20 border border-red-500/60 px-3 py-1 rounded-lg font-semibold hover:text-red-600 transition-colors"
                             >
                               Remove all
@@ -541,32 +436,13 @@ export function Train() {
                                            dark:hover:bg-neutral-800 transition-colors"
                               >
                                 <div className="flex items-center space-x-2">
-                                  <motion.svg
-                                    className="w-4 h-4 text-green-500 flex-shrink-0"
-                                    fill="none"
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    strokeWidth="2"
-                                    viewBox="0 0 24 24"
-                                    stroke="currentColor"
-                                    initial={{ scale: 0 }}
-                                    animate={{ scale: 1 }}
-                                    transition={{ delay: 0.2 }}
-                                  >
-                                    <path d="M5 13l4 4L19 7" />
-                                  </motion.svg>
-                                  <span
-                                    className="truncate max-w-[200px]"
-                                    title={file.name}
-                                  >
+                                  <span className="text-neutral-700 dark:text-neutral-300">
                                     {file.name}
                                   </span>
                                 </div>
                                 <div className="flex items-center space-x-2">
                                   <span className="text-xs text-neutral-500">
-                                    {new Date(
-                                      file.timestamp
-                                    ).toLocaleTimeString()}
+                                    {new Date(file.timestamp).toLocaleTimeString()}
                                   </span>
                                   <button
                                     onClick={() => handleRemoveFile(index)}

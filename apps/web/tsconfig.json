@@ -8,7 +8,8 @@
     ],
     "baseUrl": ".",
     "paths": {
-      "@/*": ["./*"]
+      "@/*": ["./*"],
+      "common/*": ["../../packages/common/*"]
     },
     "typeRoots": ["./node_modules/@types", "./types"],
     "jsx": "preserve",
@@ -20,7 +21,7 @@
     "noEmit": true,
     "esModuleInterop": true,
     "module": "esnext",
-    "moduleResolution": "node",
+    "moduleResolution": "bundler",
     "resolveJsonModule": true,
     "isolatedModules": true,
     "incremental": true

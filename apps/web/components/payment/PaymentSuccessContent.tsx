@@ -26,6 +26,12 @@ export function PaymentSuccessContent() {
   useEffect(() => {
     const verifyPayment = async () => {
       try {
+        if (!searchParams) {
+          setVerified(true);
+          setVerifying(false);
+          return;
+        }
+
         const paymentId = searchParams.get("razorpay_payment_id");
         const orderId = searchParams.get("razorpay_order_id");
         const signature = searchParams.get("razorpay_signature");
