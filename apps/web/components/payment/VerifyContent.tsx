@@ -30,6 +30,10 @@ export function VerifyContent() {
   useEffect(() => {
     const verifyRazorpayPayment = async () => {
       try {
+        if (!searchParams) {
+          throw new Error("Missing URL parameters");
+        }
+
         const paymentId = searchParams.get("razorpay_payment_id");
         const orderId = searchParams.get("razorpay_order_id");
         const signature = searchParams.get("razorpay_signature");
