@@ -20,7 +20,7 @@ import {
 import { Switch } from "@/components/ui/switch"
 import { UploadModal } from "@/components/ui/upload"
 import { useState } from "react"
-import { TrainModelInput } from "common/inferred"
+import { TrainModelInput } from "common/inferred-types"
 import axios from "axios"
 import { BACKEND_URL } from "../config"
 import { useRouter } from "next/navigation"
