@@ -1,5 +1,5 @@
 // Use localhost for local development
-export const BACKEND_URL = "https://photopixel.gjaiganesh.top:8080";
+export const BACKEND_URL = "https://photopixel.gjaiganesh.top";
 export const CLOUDFLARE_URL = "https://pub-ef34763ed7604da3af89117f48ad57b4.r2.dev";
 
 
