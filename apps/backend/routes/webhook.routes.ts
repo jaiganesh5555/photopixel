@@ -1,75 +1,96 @@
-import express from "express";
-import type { Request, Response } from "express";
-import { Webhook } from "svix";
 import { prismaClient } from "db";
+import { Router } from "express";
+import { Webhook } from "svix";
 
-const router = express.Router();
+const router = Router();
 
 /**
- * POST api/webhook/clerk
+ * POST /api/webhook/clerk
  * Clerk webhook endpoint
  */
-router.post("/clerk", async (req: Request, res: Response) => {
-  try {
-    const SIGNING_SECRET = process.env.SIGNING_SECRET;
+router.post("/clerk", async (req, res) => {
+  const SIGNING_SECRET = process.env.SIGNING_SECRET;
 
-    if (!SIGNING_SECRET) {
-      throw new Error(
-        "Error: Please add SIGNING_SECRET from Clerk Dashboard to .env"
-      );
-    }
-
-    const wh = new Webhook(SIGNING_SECRET);
-    const headers = req.headers;
-    const payload = req.body;
-
-    const svix_id = headers["svix-id"];
-    const svix_timestamp = headers["svix-timestamp"];
-    const svix_signature = headers["svix-signature"];
-
-    if (!svix_id || !svix_timestamp || !svix_signature) {
-      res.status(400).json({
-        success: false,
-        message: "Error: Missing svix headers",
-      });
-      return;
-    }
-
-    let evt: any;
-
-    try {
-      evt = wh.verify(JSON.stringify(payload), {
-        "svix-id": svix_id as string,
-        "svix-timestamp": svix_timestamp as string,
-        "svix-signature": svix_signature as string,
-      });
-    } catch (err) {
-      console.error("Error: Could not verify webhook:", (err as Error).message);
-      res.status(400).json({
-        success: false,
-        message: (err as Error).message,
-      });
-      return;
-    }
-
-    const { id } = evt.data;
-    const eventType = evt.type;
-
-    // Process the webhook event
-    console.log(`Processing webhook event: ${eventType} for user ${id}`);
-    
-    res.status(200).json({
-      success: true,
-      message: "Webhook processed successfully",
-    });
-  } catch (error) {
-    console.error("Error processing webhook:", error);
+  if (!SIGNING_SECRET) {
     res.status(500).json({
       success: false,
-      message: "Internal server error",
-      error: process.env.NODE_ENV === "development" ? (error as Error).message : undefined,
+      message: "Error: Please add SIGNING_SECRET from Clerk Dashboard to .env",
     });
+    return;
   }
+
+  const wh = new Webhook(SIGNING_SECRET);
+  const headers = req.headers;
+  const payload = req.body;
+
+  const svix_id = headers["svix-id"];
+  const svix_timestamp = headers["svix-timestamp"];
+  const svix_signature = headers["svix-signature"];
+
+  if (!svix_id || !svix_timestamp || !svix_signature) {
+    res.status(400).json({
+      success: false,
+      message: "Error: Missing svix headers",
+    });
+    return;
+  }
+
+  let evt: any;
+  try {
+    evt = wh.verify(JSON.stringify(payload), {
+      "svix-id": svix_id as string,
+      "svix-timestamp": svix_timestamp as string,
+      "svix-signature": svix_signature as string,
+    });
+  } catch (err) {
+    console.error("Error: Could not verify webhook:", (err as Error).message);
+    res.status(400).json({
+      success: false,
+      message: (err as Error).message,
+    });
+    return;
+  }
+
+  const { id, first_name, last_name, email_addresses, image_url, profile_image_url } = evt.data;
+  const eventType = evt.type;
+
+  try {
+    switch (eventType) {
+      case "user.created":
+      case "user.updated": {
+        await prismaClient.user.upsert({
+          where: { clerkId: id },
+          update: {
+            name: `${first_name ?? ""} ${last_name ?? ""}`.trim() || null,
+            email: email_addresses?.[0]?.email_address || null,
+            profilePicture: profile_image_url || image_url || null,
+          },
+          create: {
+            clerkId: id,
+            name: `${first_name ?? ""} ${last_name ?? ""}`.trim() || null,
+            email: email_addresses?.[0]?.email_address || null,
+            profilePicture: profile_image_url || image_url || null,
+          },
+        });
+        break;
+      }
+      case "user.deleted": {
+        await prismaClient.user.delete({
+          where: { clerkId: id },
+        });
+        break;
+      }
+      default:
+        console.log(`Unhandled Clerk event type: ${eventType}`);
+        break;
+    }
+  } catch (error) {
+    console.error("Error handling Clerk webhook:", error);
+    res.status(500).json({ success: false, message: "Internal Server Error" });
+    return;
+  }
+  console.log("user created");
+  res.status(200).json({ success: true, message: "Webhook received" });
 });
 
 export default router;

@@ -21,7 +21,6 @@ const IMAGE_GEN_CREDITS = 1;
 const TRAIN_MODEL_CREDITS = 20;
 
 const PORT = parseInt(process.env.PORT || '8080', 10);
-const ALTERNATIVE_PORTS = [8081, 8082, 8083, 8084, 8085];
 
 // R2 Configuration
 const r2Client = new S3Client({
@@ -48,7 +47,7 @@ app.use(
       "http://localhost:3000",
       "http://frontend-service:3000",
       "http://web:3000",
-      process.env.FRONTEND_URL || "",
+      process.env.FRONTEND_URL || "http://localhost:3000",
     ].filter(Boolean),
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
@@ -558,22 +557,7 @@ app.get("/model/status/:modelId", authMiddleware, async (req: Request, res: Resp
 app.use("/payment", paymentRoutes);
 app.use("/api/webhook", webhookRouter);
 
-// Start server with port fallback
-const startServer = async (port: number, alternativePorts: number[] = []): Promise<void> => {
-  try {
-    app.listen(port, () => {
-      console.log(`Server running on port ${port}`);
-    });
-  } catch (error) {
-    if (alternativePorts.length > 0) {
-      const nextPort = alternativePorts[0];
-      console.log(`Port ${port} is in use, trying port ${nextPort}...`);
-      await startServer(nextPort, alternativePorts.slice(1));
-    } else {
-      console.error('Failed to start server. All ports are in use.');
-      process.exit(1);
-    }
-  }
-};
-
-startServer(PORT, ALTERNATIVE_PORTS);
+// Start server
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+});
